@@ -38,7 +38,22 @@ Frontend: Next.js + Tailwind + shadcn
 - Auth required
 - Calls contract.revokeCertificate()
 
-### 2.4 Blockchain Service Layer
+### 2.4 Certificate Reactivation
+
+- PATCH /api/blockchain/certificates/:hash/reactivate
+- Auth required
+- Calls contract.reactivateCertificate()
+- Toggles isRevoked flag back to false
+
+### 2.5 Audit Logs API
+
+- GET /api/blockchain/audit-logs?certHash=:hash
+- Auth required (JWT)
+- Queries blockchain events (CertificateIssued, CertificateRevoked, CertificateReactivated)
+- Returns formatted event history with transaction details
+- Ordered by block number (DESC)
+
+### 2.6 Blockchain Service Layer
 
 - ethers.js provider configuration
 - Contract wrapper
@@ -52,18 +67,36 @@ Frontend: Next.js + Tailwind + shadcn
 
 Functions:
 
-- issueCertificate(bytes32, string, string, uint8, bytes)
+- issueCertificate(bytes32, string studentName, string degreeProgram, uint8 cgpa, string issuingAuthority, bytes signature)
 - verifyCertificate(bytes32)
 - revokeCertificate(bytes32)
+- reactivateCertificate(bytes32)
 
 Storage:
 
 - mapping(bytes32 → Certificate struct)
 
+Certificate Struct:
+
+```solidity
+struct Certificate {
+    bytes32 certHash;
+    string studentName;
+    string degreeProgram;
+    uint8 cgpa;
+    string issuingAuthority;
+    address issuer;
+    bool isRevoked;
+    bytes signature;
+    uint256 issuanceDate;
+}
+```
+
 Events:
 
-- CertificateIssued(certHash, issuer)
-- CertificateRevoked(certHash)
+- CertificateIssued(certHash, issuer, blockNumber)
+- CertificateRevoked(certHash, revokedBy, blockNumber)
+- CertificateReactivated(certHash, reactivatedBy, blockNumber)
 
 Rules:
 
@@ -87,6 +120,8 @@ Rules:
 - /issue (blockchain)
 - /verify (blockchain)
 - /revoke (blockchain)
+- /reactivate (blockchain)
+- /audit-logs (blockchain)
 
 ### 4.2 UI Guidelines
 
@@ -96,7 +131,11 @@ Rules:
   - blockchain txHash
   - signature preview
   - issuer address
-  - revoked status
+  - student name
+  - degree program
+  - CGPA
+  - issuing authority
+  - revoked status (active/revoked)
 - Use consistent components from centralized system UI
 
 ### 4.3 Blockchain Feedback

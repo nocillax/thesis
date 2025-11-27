@@ -1,6 +1,6 @@
 # Development Rules (rules.md)
 
-These rules apply to ALL backend, frontend, and blockchain code. Follow them strictly.
+These rules apply to All backend, frontend, and blockchain code. Follow them strictly.
 
 ## 1. Code Simplicity
 
