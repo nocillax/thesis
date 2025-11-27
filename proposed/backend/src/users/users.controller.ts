@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Param,
+  Get,
+  Patch,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from './users.service';
@@ -6,6 +14,18 @@ import { UsersService } from './users.service';
 @Controller('api/users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get()
+  async getAllUsers() {
+    return this.usersService.findAll();
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get('blockchain')
+  async getAllUsersFromBlockchain() {
+    return this.usersService.getAllUsersFromBlockchain();
+  }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('register')
@@ -26,5 +46,17 @@ export class UsersController {
       body.full_name,
       body.is_admin || false,
     );
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch(':wallet_address/revoke')
+  async revokeUser(@Param('wallet_address') walletAddress: string) {
+    return this.usersService.revokeUser(walletAddress);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch(':wallet_address/reactivate')
+  async reactivateUser(@Param('wallet_address') walletAddress: string) {
+    return this.usersService.reactivateUser(walletAddress);
   }
 }

@@ -39,6 +39,12 @@ export class BlockchainController {
     );
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get()
+  async getAllCertificates() {
+    return this.blockchainService.getAllCertificates();
+  }
+
   @Get('verify/:cert_hash')
   async verifyCertificate(@Param('cert_hash') cert_hash: string) {
     return this.blockchainService.verifyCertificate(cert_hash);
@@ -68,5 +74,13 @@ export class BlockchainController {
     @Param('wallet_address') wallet_address: string,
   ) {
     return this.blockchainService.getUserByWalletAddress(wallet_address);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('user/:wallet_address/with-db')
+  async getUserByWalletAddressWithDB(
+    @Param('wallet_address') wallet_address: string,
+  ) {
+    return this.blockchainService.getUserByWalletAddressWithDB(wallet_address);
   }
 }

@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+interface IUserRegistry {
+    function isAuthorized(address wallet_address) external view returns (bool);
+    function getUser(address wallet_address) external view returns (
+        string memory username,
+        string memory email,
+        uint256 registration_date,
+        bool is_authorized
+    );
+}
+
 contract CertificateRegistry {
     struct Certificate {
         bytes32 cert_hash;
@@ -11,7 +21,6 @@ contract CertificateRegistry {
         uint16 cgpa;
         string issuing_authority;
         address issuer;
-        string issuer_name;  // Store issuer's name immutably on blockchain
         bool is_revoked;
         bytes signature;
         uint256 issuance_date;
@@ -19,9 +28,9 @@ contract CertificateRegistry {
 
     mapping(bytes32 => Certificate) private certificates;
     mapping(bytes32 => bool) private certificate_exists;
-    mapping(address => string) private issuer_names;  // Immutable name registry
     
     address public admin;
+    IUserRegistry public userRegistry;
 
     event CertificateIssued(
         bytes32 indexed cert_hash,
@@ -41,17 +50,19 @@ contract CertificateRegistry {
         uint256 block_number
     );
 
-    constructor() {
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can perform this action");
+        _;
+    }
+
+    modifier onlyAuthorized() {
+        require(userRegistry.isAuthorized(msg.sender), "Not authorized to issue certificates");
+        _;
+    }
+
+    constructor(address _userRegistryAddress) {
         admin = msg.sender;
-    }
-
-    function registerIssuer(string memory name) external {
-        require(bytes(name).length > 0, "Name cannot be empty");
-        issuer_names[msg.sender] = name;
-    }
-
-    function getIssuerName(address issuer) external view returns (string memory) {
-        return issuer_names[issuer];
+        userRegistry = IUserRegistry(_userRegistryAddress);
     }
 
     function issueCertificate(
@@ -63,7 +74,7 @@ contract CertificateRegistry {
         uint16 cgpa,
         string memory issuing_authority,
         bytes memory signature
-    ) external {
+    ) external onlyAuthorized {
         require(!certificate_exists[cert_hash], "Certificate already exists");
         require(cgpa <= 400, "Invalid CGPA");
 
@@ -76,7 +87,6 @@ contract CertificateRegistry {
             cgpa: cgpa,
             issuing_authority: issuing_authority,
             issuer: msg.sender,
-            issuer_name: issuer_names[msg.sender],
             is_revoked: false,
             signature: signature,
             issuance_date: block.timestamp
@@ -98,7 +108,6 @@ contract CertificateRegistry {
             uint16 cgpa,
             string memory issuing_authority,
             address issuer,
-            string memory issuer_name,
             bool is_revoked,
             bytes memory signature,
             uint256 issuance_date
@@ -115,7 +124,6 @@ contract CertificateRegistry {
             cert.cgpa,
             cert.issuing_authority,
             cert.issuer,
-            cert.issuer_name,
             cert.is_revoked,
             cert.signature,
             cert.issuance_date

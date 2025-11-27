@@ -15,10 +15,8 @@ import { User } from '../users/user.entity';
 import * as crypto from 'crypto';
 
 const CONTRACT_ABI = [
-  'function registerIssuer(string name) external',
-  'function getIssuerName(address issuer) external view returns (string)',
   'function issueCertificate(bytes32 cert_hash, string certificate_number, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature) external',
-  'function verifyCertificate(bytes32 cert_hash) external view returns (string certificate_number, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, string issuer_name, bool is_revoked, bytes signature, uint256 issuance_date)',
+  'function verifyCertificate(bytes32 cert_hash) external view returns (string certificate_number, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
   'function revokeCertificate(bytes32 cert_hash) external',
   'function reactivateCertificate(bytes32 cert_hash) external',
   'event CertificateIssued(bytes32 indexed cert_hash, address indexed issuer, uint256 block_number)',
@@ -28,9 +26,15 @@ const CONTRACT_ABI = [
 
 const USER_REGISTRY_ABI = [
   'function registerUser(address wallet_address, string username, string email) external',
-  'function getUser(address wallet_address) external view returns (string username, string email, uint256 registration_date, bool is_active)',
-  'function getUserByEmail(string email) external view returns (address wallet_address, string username, uint256 registration_date, bool is_active)',
+  'function getUser(address wallet_address) external view returns (string username, string email, uint256 registration_date, bool is_authorized)',
+  'function getUserByEmail(string email) external view returns (address wallet_address, string username, uint256 registration_date, bool is_authorized)',
+  'function revokeUser(address wallet_address) external',
+  'function reactivateUser(address wallet_address) external',
+  'function isAuthorized(address wallet_address) external view returns (bool)',
   'function userExists(address wallet_address) external view returns (bool)',
+  'event UserRegistered(address indexed wallet_address, string username, string email, uint256 registration_date)',
+  'event UserRevoked(address indexed wallet_address)',
+  'event UserReactivated(address indexed wallet_address)',
 ];
 
 @Injectable()
@@ -138,14 +142,6 @@ export class BlockchainService implements OnModuleInit {
     await tx.wait();
   }
 
-  async registerIssuer(name: string, userWallet?: ethers.Wallet) {
-    const wallet = userWallet || this.adminWallet;
-    const contractWithSigner = this.certificateContract.connect(wallet) as any;
-    const tx = await contractWithSigner.registerIssuer(name);
-    await tx.wait();
-    console.log(`✅ Issuer registered: ${name} (${wallet.address})`);
-  }
-
   // Compute keccak256 hash from certificate data
   computeHash(
     student_id: string,
@@ -189,18 +185,6 @@ export class BlockchainService implements OnModuleInit {
       // Get user's wallet from database
       const userWallet = await this.getUserWallet(username, walletAddress);
 
-      // Register issuer if not already registered (username as issuer_name)
-      try {
-        const existingName = await (
-          this.certificateContract as any
-        ).getIssuerName(userWallet.address);
-        if (!existingName || existingName.length === 0) {
-          await this.registerIssuer(username, userWallet);
-        }
-      } catch (error) {
-        console.error('⚠️  Failed to check/register issuer:', error.message);
-      }
-
       const signature = await userWallet.signMessage(
         ethers.getBytes(cert_hash),
       );
@@ -234,9 +218,17 @@ export class BlockchainService implements OnModuleInit {
       };
     } catch (error) {
       console.error('❌ Certificate issuance failed:', error);
-      throw new BadRequestException(
-        error.message || 'Failed to issue certificate',
-      );
+
+      // Extract readable error message
+      if (error.reason) {
+        throw new BadRequestException(error.reason);
+      } else if (error.message && error.message.includes('Not authorized')) {
+        throw new BadRequestException('Not authorized to issue certificates');
+      } else {
+        throw new BadRequestException(
+          error.message || 'Failed to issue certificate',
+        );
+      }
     }
   }
 
@@ -244,6 +236,19 @@ export class BlockchainService implements OnModuleInit {
     try {
       const result =
         await this.certificateContract.verifyCertificate(cert_hash);
+
+      // Fetch issuer name from UserRegistry
+      let issuerName = 'Unknown';
+      try {
+        if (this.userRegistryContract) {
+          const userInfo = await this.userRegistryContract.getUser(
+            result.issuer,
+          );
+          issuerName = userInfo.username;
+        }
+      } catch (error) {
+        console.warn(`⚠️  Could not fetch issuer name for ${result.issuer}`);
+      }
 
       return {
         cert_hash,
@@ -254,7 +259,7 @@ export class BlockchainService implements OnModuleInit {
         cgpa: Number(result.cgpa) / 100,
         issuing_authority: result.issuing_authority,
         issuer: result.issuer,
-        issuer_name: result.issuer_name,
+        issuer_name: issuerName,
         is_revoked: result.is_revoked,
         signature: result.signature,
         issuance_date: new Date(
@@ -397,20 +402,174 @@ export class BlockchainService implements OnModuleInit {
   }
 
   async getUserByWalletAddress(walletAddress: string) {
-    if (!this.userRegistryContract) {
-      throw new Error('UserRegistry contract not configured');
+    try {
+      if (!this.userRegistryContract) {
+        throw new BadRequestException('UserRegistry not configured');
+      }
+
+      // Get user info from UserRegistry ONLY (pure blockchain data)
+      const userInfo = await this.userRegistryContract.getUser(walletAddress);
+
+      if (!userInfo.username || userInfo.username.length === 0) {
+        throw new NotFoundException('User not found on blockchain');
+      }
+
+      return {
+        wallet_address: walletAddress,
+        username: userInfo.username,
+        email: userInfo.email,
+        registration_date: new Date(
+          Number(userInfo.registration_date) * 1000,
+        ).toISOString(),
+        is_authorized: userInfo.is_authorized,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error fetching user by wallet address:', error);
+      throw new NotFoundException('User not found on blockchain');
     }
+  }
 
-    const result = await this.userRegistryContract.getUser(walletAddress);
+  async getUserByWalletAddressWithDB(walletAddress: string) {
+    try {
+      // Get DB data ONLY - no blockchain merging to avoid conflicts
+      const dbUser = await this.usersRepository.findOne({
+        where: { wallet_address: walletAddress },
+      });
 
-    return {
-      wallet_address: walletAddress,
-      username: result.username,
-      email: result.email,
-      registration_date: new Date(
-        Number(result.registration_date) * 1000,
-      ).toISOString(),
-      is_active: result.is_active,
-    };
+      if (!dbUser) {
+        throw new NotFoundException('User not found in database');
+      }
+
+      return {
+        id: dbUser.id,
+        username: dbUser.username,
+        email: dbUser.email,
+        full_name: dbUser.full_name,
+        wallet_address: dbUser.wallet_address,
+        is_admin: dbUser.is_admin,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error fetching user from database:', error);
+      throw new BadRequestException('Failed to fetch user information');
+    }
+  }
+
+  async revokeUserOnBlockchain(walletAddress: string) {
+    try {
+      if (!this.userRegistryContract) {
+        throw new BadRequestException('UserRegistry not configured');
+      }
+
+      const tx = await this.userRegistryContract.revokeUser(walletAddress);
+      await tx.wait();
+      console.log(`✅ User revoked on blockchain: ${walletAddress}`);
+    } catch (error) {
+      console.error('❌ Failed to revoke user on blockchain:', error);
+      throw new BadRequestException(
+        error.message || 'Failed to revoke user on blockchain',
+      );
+    }
+  }
+
+  async reactivateUserOnBlockchain(walletAddress: string) {
+    try {
+      if (!this.userRegistryContract) {
+        throw new BadRequestException('UserRegistry not configured');
+      }
+
+      const tx = await this.userRegistryContract.reactivateUser(walletAddress);
+      await tx.wait();
+      console.log(`✅ User reactivated on blockchain: ${walletAddress}`);
+    } catch (error) {
+      console.error('❌ Failed to reactivate user on blockchain:', error);
+      throw new BadRequestException(
+        error.message || 'Failed to reactivate user on blockchain',
+      );
+    }
+  }
+
+  async getAllCertificates() {
+    try {
+      // Get all CertificateIssued events from the blockchain
+      const issuedFilter = this.certificateContract.filters.CertificateIssued();
+      const issuedEvents =
+        await this.certificateContract.queryFilter(issuedFilter);
+
+      // For each event, get the full certificate details
+      const certificates = await Promise.all(
+        issuedEvents.map(async (event) => {
+          if ('args' in event) {
+            const cert_hash = event.args.cert_hash;
+            try {
+              const cert = await this.verifyCertificate(cert_hash);
+              return cert;
+            } catch (error) {
+              // Certificate might have been issued but details not retrievable
+              console.warn(`Could not retrieve certificate ${cert_hash}`);
+              return null;
+            }
+          }
+          return null;
+        }),
+      );
+
+      // Filter out nulls and return
+      return certificates.filter((cert) => cert !== null);
+    } catch (error) {
+      console.error('❌ Failed to get all certificates:', error);
+      throw new BadRequestException(
+        error.message || 'Failed to get all certificates',
+      );
+    }
+  }
+
+  async getAllUsersFromBlockchain() {
+    try {
+      if (!this.userRegistryContract) {
+        throw new BadRequestException('UserRegistry not configured');
+      }
+
+      // Query all UserRegistered events from UserRegistry
+      const registeredFilter =
+        this.userRegistryContract.filters.UserRegistered();
+      const registeredEvents =
+        await this.userRegistryContract.queryFilter(registeredFilter);
+
+      // Use Map to deduplicate by wallet address (keep latest)
+      const usersMap = new Map<string, any>();
+
+      for (const event of registeredEvents) {
+        if ('args' in event) {
+          const walletAddress = event.args.wallet_address;
+          const username = event.args.username;
+          const email = event.args.email;
+
+          // Get current user info from UserRegistry (includes is_authorized)
+          const userInfo =
+            await this.userRegistryContract.getUser(walletAddress);
+
+          usersMap.set(walletAddress, {
+            wallet_address: walletAddress,
+            username: username,
+            email: email,
+            is_authorized: userInfo.is_authorized,
+          });
+        }
+      }
+
+      // Convert Map to array
+      return Array.from(usersMap.values());
+    } catch (error) {
+      console.error('❌ Failed to get all users from blockchain:', error);
+      throw new BadRequestException(
+        error.message || 'Failed to get all users from blockchain',
+      );
+    }
   }
 }

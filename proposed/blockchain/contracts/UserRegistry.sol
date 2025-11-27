@@ -7,7 +7,7 @@ contract UserRegistry {
         string username;
         string email;
         uint256 registration_date;
-        bool is_active;
+        bool is_authorized;
     }
 
     mapping(address => User) private users;
@@ -23,7 +23,7 @@ contract UserRegistry {
         uint256 registration_date
     );
 
-    event UserDeactivated(address indexed wallet_address);
+    event UserRevoked(address indexed wallet_address);
     event UserReactivated(address indexed wallet_address);
 
     modifier onlyAdmin() {
@@ -50,7 +50,7 @@ contract UserRegistry {
             username: username,
             email: email,
             registration_date: block.timestamp,
-            is_active: true
+            is_authorized: true
         });
 
         user_exists[wallet_address] = true;
@@ -66,7 +66,7 @@ contract UserRegistry {
             string memory username,
             string memory email,
             uint256 registration_date,
-            bool is_active
+            bool is_authorized
         )
     {
         require(user_exists[wallet_address], "User not found");
@@ -76,7 +76,7 @@ contract UserRegistry {
             user.username,
             user.email,
             user.registration_date,
-            user.is_active
+            user.is_authorized
         );
     }
 
@@ -87,7 +87,7 @@ contract UserRegistry {
             address wallet_address,
             string memory username,
             uint256 registration_date,
-            bool is_active
+            bool is_authorized
         )
     {
         address addr = email_to_address[email];
@@ -99,20 +99,28 @@ contract UserRegistry {
             user.wallet_address,
             user.username,
             user.registration_date,
-            user.is_active
+            user.is_authorized
         );
     }
 
-    function deactivateUser(address wallet_address) external onlyAdmin {
+    function revokeUser(address wallet_address) external onlyAdmin {
         require(user_exists[wallet_address], "User not found");
-        users[wallet_address].is_active = false;
-        emit UserDeactivated(wallet_address);
+        require(wallet_address != admin, "Cannot revoke admin");
+        users[wallet_address].is_authorized = false;
+        emit UserRevoked(wallet_address);
     }
 
     function reactivateUser(address wallet_address) external onlyAdmin {
         require(user_exists[wallet_address], "User not found");
-        users[wallet_address].is_active = true;
+        users[wallet_address].is_authorized = true;
         emit UserReactivated(wallet_address);
+    }
+
+    function isAuthorized(address wallet_address) external view returns (bool) {
+        if (!user_exists[wallet_address]) {
+            return false;
+        }
+        return users[wallet_address].is_authorized;
     }
 
     function userExists(address wallet_address) external view returns (bool) {

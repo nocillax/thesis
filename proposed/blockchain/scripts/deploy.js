@@ -1,20 +1,34 @@
 const hre = require("hardhat");
 
 async function main() {
-  console.log("Deploying CertificateRegistry to Quorum network...");
+  console.log("Deploying contracts to Quorum network...\n");
 
+  // Deploy UserRegistry first
+  console.log("1. Deploying UserRegistry...");
+  const UserRegistry = await hre.ethers.getContractFactory("UserRegistry");
+  const userRegistry = await UserRegistry.deploy();
+  await userRegistry.waitForDeployment();
+  const userRegistryAddress = await userRegistry.getAddress();
+  console.log(`✅ UserRegistry deployed to: ${userRegistryAddress}\n`);
+
+  // Deploy CertificateRegistry with UserRegistry address
+  console.log("2. Deploying CertificateRegistry...");
   const CertificateRegistry = await hre.ethers.getContractFactory(
     "CertificateRegistry"
   );
-  const registry = await CertificateRegistry.deploy();
+  const certificateRegistry = await CertificateRegistry.deploy(
+    userRegistryAddress
+  );
+  await certificateRegistry.waitForDeployment();
+  const certificateRegistryAddress = await certificateRegistry.getAddress();
+  console.log(
+    `✅ CertificateRegistry deployed to: ${certificateRegistryAddress}\n`
+  );
 
-  await registry.waitForDeployment();
-
-  const address = await registry.getAddress();
-  console.log(`\n✅ CertificateRegistry deployed to: ${address}`);
-  console.log("\n⚠️  IMPORTANT: Save this address!");
-  console.log(`Add this to your backend .env file:`);
-  console.log(`CONTRACT_ADDRESS=${address}\n`);
+  console.log("⚠️  IMPORTANT: Save these addresses!");
+  console.log("Add these to your backend .env file:");
+  console.log(`USER_REGISTRY_ADDRESS=${userRegistryAddress}`);
+  console.log(`CONTRACT_ADDRESS=${certificateRegistryAddress}\n`);
 }
 
 main()

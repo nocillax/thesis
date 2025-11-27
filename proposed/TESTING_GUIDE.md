@@ -4,6 +4,8 @@
 
 **Default Admin:** `admin / admin123`
 
+**Note:** Admin is DB-only (no blockchain account). Admin manages the system but doesn't issue certificates.
+
 ---
 
 ## Important Notes
@@ -50,7 +52,81 @@
 
 ---
 
-## 2. Register User
+## 2. Get All Users (Database)
+
+**Endpoint:** `GET /api/users`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "username": "admin",
+    "email": "admin@university.edu",
+    "full_name": "System Administrator",
+    "wallet_address": "0x0000000000000000000000000000000000000000",
+    "is_admin": true
+  },
+  {
+    "id": "uuid",
+    "username": "john_doe",
+    "email": "john@university.edu",
+    "full_name": "John Doe",
+    "wallet_address": "0x1234...",
+    "is_admin": false
+  }
+]
+```
+
+**Note:** Gets users from database (fast but can be tampered). Use blockchain endpoint for source of truth.
+
+---
+
+## 3. Get All Users (Blockchain)
+
+**Endpoint:** `GET /api/users/blockchain`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "wallet_address": "0x1234...",
+    "username": "john_doe",
+    "email": "john@university.edu",
+    "is_authorized": true
+  },
+  {
+    "wallet_address": "0x5678...",
+    "username": "jane_smith",
+    "email": "jane@university.edu",
+    "is_authorized": false
+  }
+]
+```
+
+**Note:** Queries blockchain UserRegistry events. This is the source of truth - shows who can actually issue certificates. Admin is not included (DB-only, no blockchain account).
+
+---
+
+## 4. Register User
 
 **Endpoint:** `POST /api/users/register`
 
@@ -87,9 +163,102 @@ Authorization: Bearer YOUR_TOKEN
 }
 ```
 
+**Note:** User is automatically authorized to issue certificates on the blockchain upon registration.
+
 ---
 
-## 3. Issue Certificate
+## 5. Revoke User
+
+**Endpoint:** `PATCH /api/users/:wallet_address/revoke`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `PATCH /api/users/0x1234.../revoke`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "User john_doe has been revoked and can no longer issue certificates",
+  "wallet_address": "0x1234..."
+}
+```
+
+**Note:** Removes authorization on blockchain (source of truth). Uses wallet address instead of UUID because blockchain is the authority.
+
+---
+
+## 6. Reactivate User
+
+**Endpoint:** `PATCH /api/users/:wallet_address/reactivate`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `PATCH /api/users/0x1234.../reactivate`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "User john_doe has been reactivated and can now issue certificates",
+  "wallet_address": "0x1234..."
+}
+```
+
+**Note:** Re-authorizes user on blockchain. User can issue certificates again.
+
+---
+
+## 7. Get All Certificates
+
+**Endpoint:** `GET /api/blockchain/certificates`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "cert_hash": "0xabcd1234...",
+    "certificate_number": "CERT-2025-001",
+    "student_id": "STU-001",
+    "student_name": "Alice Johnson",
+    "degree_program": "Computer Science",
+    "cgpa": 3.85,
+    "issuing_authority": "Tech University",
+    "issuer": "0x08Bd40C733...",
+    "issuer_name": "admin",
+    "is_revoked": false,
+    "signature": "0x9abc...",
+    "issuance_date": "2025-11-27T01:28:41.000Z"
+  }
+]
+```
+
+---
+
+## 8. Issue Certificate
 
 **Endpoint:** `POST /api/blockchain/certificates`
 
@@ -129,7 +298,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 4. Verify Certificate
+## 9. Verify Certificate
 
 **Endpoint:** `GET /api/blockchain/certificates/verify/:cert_hash`
 
@@ -158,7 +327,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 5. Revoke Certificate
+## 10. Revoke Certificate
 
 **Endpoint:** `PATCH /api/blockchain/certificates/:cert_hash/revoke`
 
@@ -185,7 +354,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 6. Reactivate Certificate
+## 11. Reactivate Certificate
 
 **Endpoint:** `PATCH /api/blockchain/certificates/:cert_hash/reactivate`
 
@@ -212,7 +381,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 7. Get Audit Logs
+## 12. Get Audit Logs
 
 **Endpoint:** `GET /api/blockchain/certificates/audit-logs?cert_hash=:cert_hash`
 
@@ -256,7 +425,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 8. Get User by Wallet Address
+## 13. Get User by Wallet Address (Blockchain Only)
 
 **Endpoint:** `GET /api/blockchain/certificates/user/:wallet_address`
 
@@ -268,26 +437,61 @@ Authorization: Bearer YOUR_TOKEN
 Authorization: Bearer YOUR_TOKEN
 ```
 
-**Example:** `GET /api/blockchain/certificates/user/0x08Bd40C733...`
+**Example:** `GET /api/blockchain/certificates/user/0x1234...`
 
 **Response:**
 
 ```json
 {
-  "wallet_address": "0x08Bd40C733...",
-  "username": "admin",
-  "email": "admin@university.edu",
+  "wallet_address": "0x1234...",
+  "username": "john_doe",
+  "email": "john@university.edu",
   "registration_date": "2025-11-27T01:28:41.000Z",
-  "is_active": true
+  "is_authorized": true
 }
 ```
+
+**Note:** Returns ONLY blockchain data from UserRegistry. Pure source of truth.
+
+---
+
+## 14. Get User by Wallet Address (Database Only)
+
+**Endpoint:** `GET /api/blockchain/certificates/user/:wallet_address/with-db`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /api/blockchain/certificates/user/0x1234.../with-db`
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "username": "john_doe",
+  "email": "john@university.edu",
+  "full_name": "John Doe",
+  "wallet_address": "0x1234...",
+  "is_admin": false
+}
+```
+
+**Note:** Returns ONLY database data for the user. No blockchain merging to avoid data conflicts.
 
 ---
 
 ## Contract Addresses
 
 ```
-CertificateRegistry: 0x4261D524bc701dA4AC49339e5F8b299977045eA5
-UserRegistry: 0xC9Bc439c8723c5c6fdbBE14E5fF3a1224f8A0f7C
-Admin Wallet: 0x08Bd40C733bC5fA1eDD5ae391d2FAC32A42910E2
+CertificateRegistry: 0xfE0B7EE21e8298fC68b9Bf5f404e7df7B6671EC2
+UserRegistry: 0x834aDe89F14B5A724cD4beE5c5B5883c65ae46ba
+Admin Wallet: 0x0000000000000000000000000000000000000000 (Placeholder - admin is DB-only)
 ```
+
+**Note:** Admin has no blockchain account. Only regular users (issuers) have blockchain wallets.
