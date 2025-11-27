@@ -18,14 +18,16 @@ export class CertificatesService {
   ) {}
 
   async create(data: Partial<Certificate>, userId: string) {
-    const cert = this.certRepo.create(data);
+    const certData = { ...data, issuer_id: userId };
+    const cert = this.certRepo.create(certData);
     const savedCert = await this.certRepo.save(cert);
 
-    const { id, issuance_date, ...certData } = savedCert;
-    await this.logAudit('INSERT', savedCert.id, certData, userId);
+    const { id, issuance_date, issuer, ...auditData } = savedCert;
+    await this.logAudit('INSERT', savedCert.id, auditData, userId);
 
     return {
       certificate_id: savedCert.id,
+      certificate_number: savedCert.certificate_number,
       issuance_date: savedCert.issuance_date,
     };
   }
@@ -107,6 +109,8 @@ export class CertificatesService {
   private calculateChanges(cert: Certificate, data: Partial<Certificate>) {
     const changes: any = {};
     const fields = [
+      'certificate_number',
+      'student_id',
       'student_name',
       'degree_program',
       'cgpa',

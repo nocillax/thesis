@@ -19,7 +19,13 @@ export class UsersService implements OnModuleInit {
     return this.usersRepository.findOne({ where: { username } });
   }
 
-  async create(username: string, pass: string, is_admin: boolean = false) {
+  async create(
+    username: string,
+    email: string,
+    pass: string,
+    full_name?: string,
+    is_admin: boolean = false,
+  ) {
     const existing = await this.findOne(username);
     if (existing) throw new ConflictException('Username already exists');
 
@@ -28,6 +34,8 @@ export class UsersService implements OnModuleInit {
 
     const user = this.usersRepository.create({
       username,
+      email,
+      full_name,
       password_hash,
       is_admin,
     });
@@ -42,7 +50,13 @@ export class UsersService implements OnModuleInit {
       where: { username: 'admin' },
     });
     if (!adminExists) {
-      await this.create('admin', 'admin123', true);
+      await this.create(
+        'admin',
+        'admin@control.system',
+        'admin123',
+        'System Administrator',
+        true,
+      );
       console.log('✅ Initial Admin seeded: admin / admin123');
     }
   }

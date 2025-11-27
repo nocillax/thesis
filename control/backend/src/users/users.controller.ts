@@ -2,12 +2,26 @@ import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
-import { IsString, IsBoolean, IsOptional, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  MinLength,
+  IsEmail,
+} from 'class-validator';
 
 class CreateUserDto {
   @IsString()
   @MinLength(3)
   username: string;
+
+  @IsString()
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @IsOptional()
+  full_name?: string;
 
   @IsString()
   @MinLength(6)
@@ -26,6 +40,12 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post()
   create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto.username, dto.password, dto.isAdmin);
+    return this.usersService.create(
+      dto.username,
+      dto.email,
+      dto.password,
+      dto.full_name,
+      dto.isAdmin,
+    );
   }
 }

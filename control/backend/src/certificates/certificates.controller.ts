@@ -14,6 +14,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
 
 class CreateCertificateDto {
+  @IsString() @IsNotEmpty() certificate_number: string;
+  @IsString() @IsNotEmpty() student_id: string;
   @IsString() @IsNotEmpty() student_name: string;
   @IsString() @IsNotEmpty() degree_program: string;
   @IsNumber() @IsNotEmpty() cgpa: number;
