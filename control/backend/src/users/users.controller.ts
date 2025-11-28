@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
@@ -35,6 +35,13 @@ class CreateUserDto {
 @Controller('api/users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
+
+  // Protected: Only logged-in Admins can view all users
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get()
+  findAll() {
+    return this.usersService.findAll();
+  }
 
   // Protected: Only logged-in Admins can create new users
   @UseGuards(AuthGuard('jwt'), RolesGuard)

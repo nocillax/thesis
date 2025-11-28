@@ -14,8 +14,8 @@ interface IUserRegistry {
 contract CertificateRegistry {
     struct Certificate {
         bytes32 cert_hash;
-        string certificate_number;
         string student_id;
+        uint256 version;
         string student_name;
         string degree_program;
         uint16 cgpa;
@@ -29,11 +29,18 @@ contract CertificateRegistry {
     mapping(bytes32 => Certificate) private certificates;
     mapping(bytes32 => bool) private certificate_exists;
     
+    // Version tracking per student
+    mapping(string => uint256) public student_to_latest_version;
+    mapping(string => mapping(uint256 => bytes32)) public student_version_to_hash;
+    mapping(string => bytes32) public student_to_active_cert_hash;
+    
     address public admin;
     IUserRegistry public userRegistry;
 
     event CertificateIssued(
         bytes32 indexed cert_hash,
+        string indexed student_id,
+        uint256 version,
         address indexed issuer,
         uint256 block_number
     );
@@ -67,7 +74,6 @@ contract CertificateRegistry {
 
     function issueCertificate(
         bytes32 cert_hash,
-        string memory certificate_number,
         string memory student_id,
         string memory student_name,
         string memory degree_program,
@@ -78,10 +84,22 @@ contract CertificateRegistry {
         require(!certificate_exists[cert_hash], "Certificate already exists");
         require(cgpa <= 400, "Invalid CGPA");
 
+        // Check if student already has certificates
+        uint256 latest_version = student_to_latest_version[student_id];
+        
+        if (latest_version > 0) {
+            // Student has existing certificates - must revoke the active one first
+            bytes32 active_hash = student_to_active_cert_hash[student_id];
+            require(active_hash == bytes32(0), 
+                    "Student has an active certificate. Revoke it before creating a new version.");
+        }
+        
+        uint256 new_version = latest_version + 1;
+
         certificates[cert_hash] = Certificate({
             cert_hash: cert_hash,
-            certificate_number: certificate_number,
             student_id: student_id,
+            version: new_version,
             student_name: student_name,
             degree_program: degree_program,
             cgpa: cgpa,
@@ -93,16 +111,19 @@ contract CertificateRegistry {
         });
 
         certificate_exists[cert_hash] = true;
+        student_to_latest_version[student_id] = new_version;
+        student_version_to_hash[student_id][new_version] = cert_hash;
+        student_to_active_cert_hash[student_id] = cert_hash;
 
-        emit CertificateIssued(cert_hash, msg.sender, block.number);
+        emit CertificateIssued(cert_hash, student_id, new_version, msg.sender, block.number);
     }
 
     function verifyCertificate(bytes32 cert_hash)
         external
         view
         returns (
-            string memory certificate_number,
             string memory student_id,
+            uint256 version,
             string memory student_name,
             string memory degree_program,
             uint16 cgpa,
@@ -117,8 +138,8 @@ contract CertificateRegistry {
         Certificate memory cert = certificates[cert_hash];
         
         return (
-            cert.certificate_number,
             cert.student_id,
+            cert.version,
             cert.student_name,
             cert.degree_program,
             cert.cgpa,
@@ -133,16 +154,60 @@ contract CertificateRegistry {
     function revokeCertificate(bytes32 cert_hash) external {
         require(certificate_exists[cert_hash], "Certificate does not exist");
 
-        certificates[cert_hash].is_revoked = true;
+        Certificate storage cert = certificates[cert_hash];
+        cert.is_revoked = true;
+        
+        // Clear active pointer if this was the active certificate
+        if (student_to_active_cert_hash[cert.student_id] == cert_hash) {
+            student_to_active_cert_hash[cert.student_id] = bytes32(0);
+        }
 
         emit CertificateRevoked(cert_hash, msg.sender, block.number);
     }
 
     function reactivateCertificate(bytes32 cert_hash) external {
         require(certificate_exists[cert_hash], "Certificate does not exist");
-
-        certificates[cert_hash].is_revoked = false;
+        
+        Certificate storage cert = certificates[cert_hash];
+        require(cert.is_revoked, "Certificate is already active");
+        
+        // Check if another version is active
+        bytes32 active_hash = student_to_active_cert_hash[cert.student_id];
+        require(active_hash == bytes32(0), 
+                "Another version is active. Revoke it first to reactivate this version.");
+        
+        cert.is_revoked = false;
+        student_to_active_cert_hash[cert.student_id] = cert_hash;
 
         emit CertificateReactivated(cert_hash, msg.sender, block.number);
+    }
+    
+    // Get active certificate for a student
+    function getActiveCertificate(string memory student_id)
+        external
+        view
+        returns (Certificate memory)
+    {
+        bytes32 hash = student_to_active_cert_hash[student_id];
+        require(hash != bytes32(0), "No active certificate for this student");
+        return certificates[hash];
+    }
+    
+    // Get all certificate hashes for a student
+    function getAllVersions(string memory student_id)
+        external
+        view
+        returns (bytes32[] memory)
+    {
+        uint256 latest = student_to_latest_version[student_id];
+        require(latest > 0, "No certificates found for this student");
+        
+        bytes32[] memory hashes = new bytes32[](latest);
+        
+        for (uint256 v = 1; v <= latest; v++) {
+            hashes[v-1] = student_version_to_hash[student_id][v];
+        }
+        
+        return hashes;
     }
 }

@@ -27,6 +27,12 @@ export class CertificatesController {
   constructor(private readonly certificatesService: CertificatesService) {}
 
   @UseGuards(AuthGuard('jwt'))
+  @Get()
+  findAll() {
+    return this.certificatesService.findAll();
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   create(@Body() createDto: CreateCertificateDto, @Request() req) {
     return this.certificatesService.create(createDto, req.user.userId);

@@ -241,8 +241,8 @@ Authorization: Bearer YOUR_TOKEN
 [
   {
     "cert_hash": "0xabcd1234...",
-    "certificate_number": "CERT-2025-001",
-    "student_id": "STU-001",
+    "student_id": "22-46734-1",
+    "version": 1,
     "student_name": "Alice Johnson",
     "degree_program": "Computer Science",
     "cgpa": 3.85,
@@ -255,6 +255,8 @@ Authorization: Bearer YOUR_TOKEN
   }
 ]
 ```
+
+**Note:** Certificates are now versioned by student_id. Each student can have multiple versions (v1, v2, v3...).
 
 ---
 
@@ -274,8 +276,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ```json
 {
-  "certificate_number": "CERT-2025-001",
-  "student_id": "STU-001",
+  "student_id": "22-46734-1",
   "student_name": "Alice Johnson",
   "degree_program": "Computer Science",
   "cgpa": 3.85,
@@ -288,13 +289,21 @@ Authorization: Bearer YOUR_TOKEN
 ```json
 {
   "success": true,
-  "certificate_number": "CERT-2025-001",
+  "student_id": "22-46734-1",
+  "version": 1,
   "cert_hash": "0xabcd1234...",
   "transaction_hash": "0x5678efgh...",
   "block_number": 123,
   "signature": "0x9abc..."
 }
 ```
+
+**Important Notes:**
+
+- **No certificate_number needed!** Student ID is the unique identifier
+- **Automatic versioning:** First certificate = v1, second = v2, etc.
+- **Must revoke active version first:** If student has an active certificate, you must revoke it before issuing a new version
+- **Only one active version:** Only one version can be active at a time per student
 
 ---
 
@@ -486,11 +495,89 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
+## 15. Get Active Certificate by Student ID
+
+**Endpoint:** `GET /api/blockchain/certificates/student/:student_id/active`
+
+**Auth:** None (Public)
+
+**Example:** `GET /api/blockchain/certificates/student/22-46734-1/active`
+
+**Response:**
+
+```json
+{
+  "cert_hash": "0xabcd1234...",
+  "student_id": "22-46734-1",
+  "version": 2,
+  "student_name": "Alice Johnson",
+  "degree_program": "Computer Science",
+  "cgpa": 3.85,
+  "issuing_authority": "Tech University",
+  "issuer": "0x08Bd40C733...",
+  "issuer_name": "john_doe",
+  "is_revoked": false,
+  "signature": "0x9abc...",
+  "issuance_date": "2025-11-27T01:28:41.000Z"
+}
+```
+
+**Note:** Returns the currently active certificate for a student. Returns 404 if no active certificate exists.
+
+---
+
+## 16. Get All Certificate Versions by Student ID
+
+**Endpoint:** `GET /api/blockchain/certificates/student/:student_id/versions`
+
+**Auth:** None (Public)
+
+**Example:** `GET /api/blockchain/certificates/student/22-46734-1/versions`
+
+**Response:**
+
+```json
+[
+  {
+    "cert_hash": "0xabcd1234...",
+    "student_id": "22-46734-1",
+    "version": 1,
+    "student_name": "Alice Johnson",
+    "degree_program": "Computer Science",
+    "cgpa": 3.5,
+    "issuing_authority": "Tech University",
+    "issuer": "0x08Bd40C733...",
+    "issuer_name": "john_doe",
+    "is_revoked": true,
+    "signature": "0x9abc...",
+    "issuance_date": "2025-11-20T01:28:41.000Z"
+  },
+  {
+    "cert_hash": "0xefgh5678...",
+    "student_id": "22-46734-1",
+    "version": 2,
+    "student_name": "Alice Johnson",
+    "degree_program": "Computer Science",
+    "cgpa": 3.85,
+    "issuing_authority": "Tech University",
+    "issuer": "0x08Bd40C733...",
+    "issuer_name": "john_doe",
+    "is_revoked": false,
+    "signature": "0x1def...",
+    "issuance_date": "2025-11-27T01:28:41.000Z"
+  }
+]
+```
+
+**Note:** Returns ALL certificate versions for a student, including revoked ones. Useful for audit trails and history tracking.
+
+---
+
 ## Contract Addresses
 
 ```
-CertificateRegistry: 0xfE0B7EE21e8298fC68b9Bf5f404e7df7B6671EC2
-UserRegistry: 0x834aDe89F14B5A724cD4beE5c5B5883c65ae46ba
+CertificateRegistry: 0xc83003B2AD5C3EF3e93Cc3Ef0a48E84dc8DBD718
+UserRegistry: 0x6aA8b700cD034Ab4B897B59447f268b33B8cF699
 Admin Wallet: 0x0000000000000000000000000000000000000000 (Placeholder - admin is DB-only)
 ```
 

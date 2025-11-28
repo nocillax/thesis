@@ -3,10 +3,6 @@ import { IsString, IsNotEmpty, IsNumber, Min, Max } from 'class-validator';
 export class IssueCertificateDto {
   @IsString()
   @IsNotEmpty()
-  certificate_number: string;
-
-  @IsString()
-  @IsNotEmpty()
   student_id: string;
 
   @IsString()

@@ -28,7 +28,6 @@ export class BlockchainController {
   @Post()
   async issueCertificate(@Body() dto: IssueCertificateDto, @Request() req) {
     return this.blockchainService.issueCertificate(
-      dto.certificate_number,
       dto.student_id,
       dto.student_name,
       dto.degree_program,
@@ -48,6 +47,16 @@ export class BlockchainController {
   @Get('verify/:cert_hash')
   async verifyCertificate(@Param('cert_hash') cert_hash: string) {
     return this.blockchainService.verifyCertificate(cert_hash);
+  }
+
+  @Get('student/:student_id/active')
+  async getActiveCertificate(@Param('student_id') student_id: string) {
+    return this.blockchainService.getActiveCertificateByStudentId(student_id);
+  }
+
+  @Get('student/:student_id/versions')
+  async getAllVersions(@Param('student_id') student_id: string) {
+    return this.blockchainService.getAllVersionsByStudentId(student_id);
   }
 
   @UseGuards(AuthGuard('jwt'))

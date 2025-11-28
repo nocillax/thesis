@@ -19,6 +19,13 @@ export class UsersService implements OnModuleInit {
     return this.usersRepository.findOne({ where: { username } });
   }
 
+  async findAll(): Promise<User[]> {
+    const users = await this.usersRepository.find({
+      select: ['id', 'username', 'email', 'full_name', 'is_admin'],
+    });
+    return users;
+  }
+
   async create(
     username: string,
     email: string,

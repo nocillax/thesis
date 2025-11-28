@@ -38,6 +38,14 @@ export class CertificatesService {
     return cert;
   }
 
+  async findAll() {
+    const certificates = await this.certRepo.find({
+      relations: ['issuer'],
+      order: { issuance_date: 'DESC' },
+    });
+    return certificates;
+  }
+
   async revoke(id: string, userId: string) {
     const cert = await this.findOne(id);
     if (cert.is_revoked) {

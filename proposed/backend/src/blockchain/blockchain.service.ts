@@ -15,11 +15,15 @@ import { User } from '../users/user.entity';
 import * as crypto from 'crypto';
 
 const CONTRACT_ABI = [
-  'function issueCertificate(bytes32 cert_hash, string certificate_number, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature) external',
-  'function verifyCertificate(bytes32 cert_hash) external view returns (string certificate_number, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
+  'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature) external',
+  'function verifyCertificate(bytes32 cert_hash) external view returns (string student_id, uint256 version, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
   'function revokeCertificate(bytes32 cert_hash) external',
   'function reactivateCertificate(bytes32 cert_hash) external',
-  'event CertificateIssued(bytes32 indexed cert_hash, address indexed issuer, uint256 block_number)',
+  'function getActiveCertificate(string student_id) external view returns (tuple(bytes32 cert_hash, string student_id, uint256 version, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date))',
+  'function getAllVersions(string student_id) external view returns (bytes32[])',
+  'function student_to_latest_version(string student_id) external view returns (uint256)',
+  'function student_to_active_cert_hash(string student_id) external view returns (bytes32)',
+  'event CertificateIssued(bytes32 indexed cert_hash, string indexed student_id, uint256 version, address indexed issuer, uint256 block_number)',
   'event CertificateRevoked(bytes32 indexed cert_hash, address indexed revoked_by, uint256 block_number)',
   'event CertificateReactivated(bytes32 indexed cert_hash, address indexed reactivated_by, uint256 block_number)',
 ];
@@ -142,13 +146,13 @@ export class BlockchainService implements OnModuleInit {
     await tx.wait();
   }
 
-  // Compute keccak256 hash from certificate data
+  // Compute keccak256 hash from certificate data (removed certificate_number)
   computeHash(
     student_id: string,
     student_name: string,
     degree_program: string,
     cgpa: number,
-    certificate_number: string,
+    version: number,
     issuance_date: number,
   ): string {
     const data =
@@ -156,13 +160,12 @@ export class BlockchainService implements OnModuleInit {
       student_name +
       degree_program +
       cgpa.toString() +
-      certificate_number +
+      version.toString() +
       issuance_date.toString();
     return ethers.keccak256(ethers.toUtf8Bytes(data));
   }
 
   async issueCertificate(
-    certificate_number: string,
     student_id: string,
     student_name: string,
     degree_program: string,
@@ -172,13 +175,18 @@ export class BlockchainService implements OnModuleInit {
     walletAddress: string,
   ) {
     try {
+      // Check if student already has an active certificate
+      const latestVersion =
+        await this.certificateContract.student_to_latest_version(student_id);
+      const version = Number(latestVersion) + 1;
+
       const issuance_date = Math.floor(Date.now() / 1000);
       const cert_hash = this.computeHash(
         student_id,
         student_name,
         degree_program,
         cgpa,
-        certificate_number,
+        version,
         issuance_date,
       );
 
@@ -197,7 +205,6 @@ export class BlockchainService implements OnModuleInit {
 
       const tx = await contractWithUserSigner.issueCertificate(
         cert_hash,
-        certificate_number,
         student_id,
         student_name,
         degree_program,
@@ -210,7 +217,8 @@ export class BlockchainService implements OnModuleInit {
 
       return {
         success: true,
-        certificate_number,
+        student_id,
+        version,
         cert_hash,
         transaction_hash: receipt.hash,
         block_number: receipt.blockNumber,
@@ -219,16 +227,24 @@ export class BlockchainService implements OnModuleInit {
     } catch (error) {
       console.error('❌ Certificate issuance failed:', error);
 
-      // Extract readable error message
+      // Extract clean error message from smart contract revert
       if (error.reason) {
         throw new BadRequestException(error.reason);
-      } else if (error.message && error.message.includes('Not authorized')) {
-        throw new BadRequestException('Not authorized to issue certificates');
-      } else {
-        throw new BadRequestException(
-          error.message || 'Failed to issue certificate',
-        );
       }
+
+      // Handle CALL_EXCEPTION errors with revert data
+      if (error.code === 'CALL_EXCEPTION' && error.revert?.args?.[0]) {
+        throw new BadRequestException(error.revert.args[0]);
+      }
+
+      // Check for specific error messages
+      if (error.message && error.message.includes('Not authorized')) {
+        throw new BadRequestException('Not authorized to issue certificates');
+      }
+
+      throw new BadRequestException(
+        error.message || 'Failed to issue certificate',
+      );
     }
   }
 
@@ -252,8 +268,8 @@ export class BlockchainService implements OnModuleInit {
 
       return {
         cert_hash,
-        certificate_number: result.certificate_number,
         student_id: result.student_id,
+        version: Number(result.version),
         student_name: result.student_name,
         degree_program: result.degree_program,
         cgpa: Number(result.cgpa) / 100,
@@ -334,6 +350,17 @@ export class BlockchainService implements OnModuleInit {
       ) {
         throw error;
       }
+
+      // Extract clean error message from smart contract revert
+      if (error.reason) {
+        throw new BadRequestException(error.reason);
+      }
+
+      // Handle CALL_EXCEPTION errors with revert data
+      if (error.code === 'CALL_EXCEPTION' && error.revert?.args?.[0]) {
+        throw new BadRequestException(error.revert.args[0]);
+      }
+
       throw new BadRequestException(
         error.message || 'Failed to reactivate certificate',
       );
@@ -569,6 +596,83 @@ export class BlockchainService implements OnModuleInit {
       console.error('❌ Failed to get all users from blockchain:', error);
       throw new BadRequestException(
         error.message || 'Failed to get all users from blockchain',
+      );
+    }
+  }
+
+  async getActiveCertificateByStudentId(student_id: string) {
+    try {
+      const activeCert =
+        await this.certificateContract.getActiveCertificate(student_id);
+
+      // Fetch issuer name from UserRegistry
+      let issuerName = 'Unknown';
+      try {
+        if (this.userRegistryContract) {
+          const userInfo = await this.userRegistryContract.getUser(
+            activeCert.issuer,
+          );
+          issuerName = userInfo.username;
+        }
+      } catch (error) {
+        console.warn(
+          `⚠️  Could not fetch issuer name for ${activeCert.issuer}`,
+        );
+      }
+
+      return {
+        cert_hash: activeCert.cert_hash,
+        student_id: activeCert.student_id,
+        version: Number(activeCert.version),
+        student_name: activeCert.student_name,
+        degree_program: activeCert.degree_program,
+        cgpa: Number(activeCert.cgpa) / 100,
+        issuing_authority: activeCert.issuing_authority,
+        issuer: activeCert.issuer,
+        issuer_name: issuerName,
+        is_revoked: activeCert.is_revoked,
+        signature: activeCert.signature,
+        issuance_date: new Date(
+          Number(activeCert.issuance_date) * 1000,
+        ).toISOString(),
+      };
+    } catch (error) {
+      if (error.message && error.message.includes('No active certificate')) {
+        throw new NotFoundException(
+          `No active certificate found for student ${student_id}`,
+        );
+      }
+      throw new BadRequestException(
+        error.message || 'Failed to get active certificate',
+      );
+    }
+  }
+
+  async getAllVersionsByStudentId(student_id: string) {
+    try {
+      const hashes = await this.certificateContract.getAllVersions(student_id);
+
+      // Get details for each version
+      const versions = await Promise.all(
+        hashes.map(async (hash: string) => {
+          try {
+            return await this.verifyCertificate(hash);
+          } catch (error) {
+            console.warn(`Could not retrieve certificate ${hash}`);
+            return null;
+          }
+        }),
+      );
+
+      return versions.filter((cert) => cert !== null);
+    } catch (error) {
+      if (error.message && error.message.includes('No certificates found')) {
+        throw new NotFoundException(
+          `No certificates found for student ${student_id}`,
+        );
+      }
+      throw new BadRequestException(
+        error.message || 'Failed to get certificate versions',
       );
     }
   }

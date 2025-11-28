@@ -81,7 +81,42 @@ Listening on port 3000
 
 ---
 
-### 2. Create User
+### 2. Get All Users
+
+**Endpoint:** `GET /api/users`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "username": "admin",
+    "email": "admin@university.edu",
+    "full_name": "System Administrator",
+    "is_admin": true
+  },
+  {
+    "id": "uuid",
+    "username": "alice_issuer",
+    "email": "alice@bracu.edu.bd",
+    "full_name": "Alice Johnson",
+    "is_admin": false
+  }
+]
+```
+
+---
+
+### 3. Create User
 
 **Endpoint:** `POST /api/users`
 
@@ -119,7 +154,44 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 3. Issue Certificate
+### 4. Get All Certificates
+
+**Endpoint:** `GET /api/certificates`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "certificate_number": "CERT-2025-001",
+    "student_id": "STU-001",
+    "student_name": "John Doe",
+    "degree_program": "Computer Science",
+    "cgpa": 3.85,
+    "issuing_authority": "BRAC University",
+    "is_revoked": false,
+    "issuance_date": "2025-11-27T12:00:00Z",
+    "issuer": {
+      "id": "uuid",
+      "username": "admin",
+      "email": "admin@university.edu"
+    }
+  }
+]
+```
+
+---
+
+### 5. Issue Certificate
 
 **Endpoint:** `POST /api/certificates`
 
@@ -156,7 +228,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 4. Get Certificate
+### 6. Get Certificate
 
 **Endpoint:** `GET /api/certificates/:id`
 
@@ -181,7 +253,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 5. Update Certificate
+### 7. Update Certificate
 
 **Endpoint:** `PATCH /api/certificates/:id`
 
@@ -213,7 +285,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 6. Revoke Certificate
+### 8. Revoke Certificate
 
 **Endpoint:** `PATCH /api/certificates/:id/revoke`
 
@@ -236,7 +308,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 7. Reactivate Certificate
+### 9. Reactivate Certificate
 
 **Endpoint:** `PATCH /api/certificates/:id/reactivate`
 
@@ -259,7 +331,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 8. Get Audit Logs
+### 10. Get Audit Logs
 
 **Endpoint:** `GET /api/certificates/audit-logs?certificate_id=:id`
 
