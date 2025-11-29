@@ -79,16 +79,17 @@ contract CertificateRegistry {
         string memory degree_program,
         uint16 cgpa,
         string memory issuing_authority,
-        bytes memory signature
-    ) external onlyAuthorized {
+        bytes memory signature,
+        address issuer_address
+    ) external {
+        require(userRegistry.isAuthorized(issuer_address), "Provided issuer is not authorized");
+        require(msg.sender == admin || msg.sender == issuer_address, "Only admin or the issuer can issue certificates");
         require(!certificate_exists[cert_hash], "Certificate already exists");
         require(cgpa <= 400, "Invalid CGPA");
 
-        // Check if student already has certificates
         uint256 latest_version = student_to_latest_version[student_id];
         
         if (latest_version > 0) {
-            // Student has existing certificates - must revoke the active one first
             bytes32 active_hash = student_to_active_cert_hash[student_id];
             require(active_hash == bytes32(0), 
                     "Student has an active certificate. Revoke it before creating a new version.");
@@ -104,7 +105,7 @@ contract CertificateRegistry {
             degree_program: degree_program,
             cgpa: cgpa,
             issuing_authority: issuing_authority,
-            issuer: msg.sender,
+            issuer: issuer_address,
             is_revoked: false,
             signature: signature,
             issuance_date: block.timestamp
@@ -115,7 +116,7 @@ contract CertificateRegistry {
         student_version_to_hash[student_id][new_version] = cert_hash;
         student_to_active_cert_hash[student_id] = cert_hash;
 
-        emit CertificateIssued(cert_hash, student_id, new_version, msg.sender, block.number);
+        emit CertificateIssued(cert_hash, student_id, new_version, issuer_address, block.number);
     }
 
     function verifyCertificate(bytes32 cert_hash)

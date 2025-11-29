@@ -1,32 +1,38 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { ethers } from 'ethers';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
-  ) {}
+  constructor(private jwtService: JwtService) {}
 
-  async login(username: string, pass: string) {
-    const user = await this.usersService.findOne(username);
+  async walletLogin(walletAddress: string, signature: string, message: string) {
+    try {
+      // Verify the signature
+      const recoveredAddress = ethers.verifyMessage(message, signature);
+      
+      if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+        throw new UnauthorizedException('Invalid signature');
+      }
 
-    if (user && (await bcrypt.compare(pass, user.password_hash))) {
-      const payload = {
-        username: user.username,
-        sub: user.id,
-        isAdmin: user.is_admin,
-        walletAddress: user.wallet_address,
-      };
-
-      return {
-        success: true,
-        access_token: this.jwtService.sign(payload),
-      };
+      // Signature is valid - user owns this wallet
+      return { verified: true, walletAddress: recoveredAddress };
+    } catch (error) {
+      console.error('Wallet login verification failed:', error);
+      throw new UnauthorizedException('Invalid signature or wallet address');
     }
+  }
 
-    throw new UnauthorizedException('Invalid credentials');
+  generateToken(walletAddress: string, username: string, isAdmin: boolean) {
+    const payload = {
+      walletAddress,
+      username,
+      isAdmin,
+    };
+
+    return {
+      success: true,
+      access_token: this.jwtService.sign(payload),
+    };
   }
 }

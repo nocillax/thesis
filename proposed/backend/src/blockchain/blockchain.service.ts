@@ -1,21 +1,15 @@
 import {
   Injectable,
   OnModuleInit,
-  Inject,
-  forwardRef,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { createHash } from 'crypto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../users/user.entity';
-import * as crypto from 'crypto';
 
 const CONTRACT_ABI = [
-  'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature) external',
+  'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature, address issuer_address) external',
   'function verifyCertificate(bytes32 cert_hash) external view returns (string student_id, uint256 version, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
   'function revokeCertificate(bytes32 cert_hash) external',
   'function reactivateCertificate(bytes32 cert_hash) external',
@@ -29,11 +23,13 @@ const CONTRACT_ABI = [
 ];
 
 const USER_REGISTRY_ABI = [
-  'function registerUser(address wallet_address, string username, string email) external',
-  'function getUser(address wallet_address) external view returns (string username, string email, uint256 registration_date, bool is_authorized)',
-  'function getUserByEmail(string email) external view returns (address wallet_address, string username, uint256 registration_date, bool is_authorized)',
+  'function registerUser(address wallet_address, string username, string email, bool is_admin) external',
+  'function getUser(address wallet_address) external view returns (string username, string email, uint256 registration_date, bool is_authorized, bool is_admin)',
+  'function getUserByEmail(string email) external view returns (address wallet_address, string username, uint256 registration_date, bool is_authorized, bool is_admin)',
   'function revokeUser(address wallet_address) external',
   'function reactivateUser(address wallet_address) external',
+  'function grantAdmin(address wallet_address) external',
+  'function revokeAdmin(address wallet_address) external',
   'function isAuthorized(address wallet_address) external view returns (bool)',
   'function userExists(address wallet_address) external view returns (bool)',
   'event UserRegistered(address indexed wallet_address, string username, string email, uint256 registration_date)',
@@ -43,19 +39,12 @@ const USER_REGISTRY_ABI = [
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
-  private readonly ENCRYPTION_KEY =
-    process.env.MASTER_ENCRYPTION_KEY ||
-    'default-master-key-change-in-production';
   private provider: ethers.JsonRpcProvider;
   private adminWallet: ethers.Wallet;
   private certificateContract: ethers.Contract;
   private userRegistryContract: ethers.Contract;
 
-  constructor(
-    private configService: ConfigService,
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-  ) {}
+  constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
     const rpcUrl =
@@ -84,66 +73,59 @@ export class BlockchainService implements OnModuleInit {
         USER_REGISTRY_ABI,
         this.adminWallet,
       );
-      console.log(`   User Registry: ${userRegistryAddress}`);
     }
 
     console.log('✅ Blockchain service initialized');
     console.log(`   RPC: ${rpcUrl}`);
-    console.log(`   Contract: ${certificateAddress}`);
-    console.log(`   Admin Wallet: ${this.adminWallet.address}`);
+    console.log(`   Certificate Contract: ${certificateAddress}`);
+    console.log(`   User Registry Contract: ${userRegistryAddress}`);
   }
 
-  // Decrypt user's private key from database so we can sign blockchain transactions
-  // Format stored in DB: "iv:encrypted_data" (both as hex strings)
-  private decryptPrivateKey(encryptedKey: string): string {
-    const algorithm = 'aes-256-ctr';
-    // Hash the master key to get a consistent 32-byte encryption key
-    const key = crypto
-      .createHash('sha256')
-      .update(this.ENCRYPTION_KEY)
-      .digest();
-    // Split the stored format: "iv:encrypted"
-    const parts = encryptedKey.split(':');
-    const iv = Buffer.from(parts[0], 'hex'); // Initialization vector (16 bytes)
-    const encrypted = Buffer.from(parts[1], 'hex'); // The actual encrypted private key
-    const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    // Decrypt and convert back to the original private key string
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
-    return decrypted.toString('utf8');
-  }
-
-  private async getUserWallet(
-    username: string,
-    walletAddress: string,
-  ): Promise<ethers.Wallet> {
-    const user = await this.usersRepository.findOne({ where: { username } });
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const privateKey = this.decryptPrivateKey(user.encrypted_private_key);
-    return new ethers.Wallet(privateKey, this.provider);
-  }
-
-  async registerUserOnBlockchain(
-    walletAddress: string,
+  async registerNewUser(
     username: string,
     email: string,
+    is_admin: boolean = false,
   ) {
     if (!this.userRegistryContract) {
-      console.warn('⚠️  UserRegistry contract not configured');
-      return;
+      throw new BadRequestException('UserRegistry not configured');
     }
 
-    const tx = await this.userRegistryContract.registerUser(
-      walletAddress,
-      username,
-      email,
-    );
-    await tx.wait();
+    const newWallet = ethers.Wallet.createRandom();
+    const walletAddress = newWallet.address;
+    const privateKey = newWallet.privateKey;
+
+    try {
+      const tx = await this.userRegistryContract.registerUser(
+        walletAddress,
+        username,
+        email,
+        is_admin,
+      );
+      const receipt = await tx.wait();
+
+      console.log(`✅ User registered: ${username} (${walletAddress})`);
+
+      return {
+        success: true,
+        message:
+          'User registered successfully. Import private key to Rabby wallet.',
+        wallet_address: walletAddress,
+        private_key: privateKey,
+        username,
+        email,
+        is_admin,
+        transaction_hash: receipt.hash,
+        block_number: receipt.blockNumber,
+      };
+    } catch (error) {
+      if (error.reason) {
+        throw new BadRequestException(error.reason);
+      }
+      if (error.code === 'CALL_EXCEPTION' && error.revert?.args?.[0]) {
+        throw new BadRequestException(error.revert.args[0]);
+      }
+      throw new BadRequestException(error.message || 'Failed to register user');
+    }
   }
 
   // Compute keccak256 hash from certificate data (removed certificate_number)
@@ -190,20 +172,14 @@ export class BlockchainService implements OnModuleInit {
         issuance_date,
       );
 
-      // Get user's wallet from database
-      const userWallet = await this.getUserWallet(username, walletAddress);
-
-      const signature = await userWallet.signMessage(
+      // Backend signs with admin wallet (can be updated to accept user signatures in future)
+      const signature = await this.adminWallet.signMessage(
         ethers.getBytes(cert_hash),
       );
       const cgpa_scaled = Math.round(cgpa * 100);
 
-      // Use user's wallet to sign transaction
-      const contractWithUserSigner = this.certificateContract.connect(
-        userWallet,
-      ) as any;
-
-      const tx = await contractWithUserSigner.issueCertificate(
+      // Admin wallet pays gas, but actual issuer is recorded
+      const tx = await this.certificateContract.issueCertificate(
         cert_hash,
         student_id,
         student_name,
@@ -211,6 +187,7 @@ export class BlockchainService implements OnModuleInit {
         cgpa_scaled,
         issuing_authority,
         signature,
+        walletAddress,
       );
 
       const receipt = await tx.wait();
@@ -449,6 +426,7 @@ export class BlockchainService implements OnModuleInit {
           Number(userInfo.registration_date) * 1000,
         ).toISOString(),
         is_authorized: userInfo.is_authorized,
+        is_admin: userInfo.is_admin,
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -456,34 +434,6 @@ export class BlockchainService implements OnModuleInit {
       }
       console.error('Error fetching user by wallet address:', error);
       throw new NotFoundException('User not found on blockchain');
-    }
-  }
-
-  async getUserByWalletAddressWithDB(walletAddress: string) {
-    try {
-      // Get DB data ONLY - no blockchain merging to avoid conflicts
-      const dbUser = await this.usersRepository.findOne({
-        where: { wallet_address: walletAddress },
-      });
-
-      if (!dbUser) {
-        throw new NotFoundException('User not found in database');
-      }
-
-      return {
-        id: dbUser.id,
-        username: dbUser.username,
-        email: dbUser.email,
-        full_name: dbUser.full_name,
-        wallet_address: dbUser.wallet_address,
-        is_admin: dbUser.is_admin,
-      };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      console.error('Error fetching user from database:', error);
-      throw new BadRequestException('Failed to fetch user information');
     }
   }
 
@@ -517,6 +467,40 @@ export class BlockchainService implements OnModuleInit {
       console.error('❌ Failed to reactivate user on blockchain:', error);
       throw new BadRequestException(
         error.message || 'Failed to reactivate user on blockchain',
+      );
+    }
+  }
+
+  async grantAdminToUser(walletAddress: string) {
+    try {
+      if (!this.userRegistryContract) {
+        throw new BadRequestException('UserRegistry not configured');
+      }
+
+      const tx = await this.userRegistryContract.grantAdmin(walletAddress);
+      await tx.wait();
+      console.log(`✅ Admin privileges granted: ${walletAddress}`);
+    } catch (error) {
+      console.error('❌ Failed to grant admin privileges:', error);
+      throw new BadRequestException(
+        error.reason || error.message || 'Failed to grant admin privileges',
+      );
+    }
+  }
+
+  async revokeAdminFromUser(walletAddress: string) {
+    try {
+      if (!this.userRegistryContract) {
+        throw new BadRequestException('UserRegistry not configured');
+      }
+
+      const tx = await this.userRegistryContract.revokeAdmin(walletAddress);
+      await tx.wait();
+      console.log(`✅ Admin privileges revoked: ${walletAddress}`);
+    } catch (error) {
+      console.error('❌ Failed to revoke admin privileges:', error);
+      throw new BadRequestException(
+        error.reason || error.message || 'Failed to revoke admin privileges',
       );
     }
   }
@@ -586,6 +570,7 @@ export class BlockchainService implements OnModuleInit {
             username: username,
             email: email,
             is_authorized: userInfo.is_authorized,
+            is_admin: userInfo.is_admin,
           });
         }
       }

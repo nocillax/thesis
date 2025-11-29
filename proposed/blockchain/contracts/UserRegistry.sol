@@ -8,6 +8,7 @@ contract UserRegistry {
         string email;
         uint256 registration_date;
         bool is_authorized;
+        bool is_admin;
     }
 
     mapping(address => User) private users;
@@ -25,6 +26,8 @@ contract UserRegistry {
 
     event UserRevoked(address indexed wallet_address);
     event UserReactivated(address indexed wallet_address);
+    event AdminGranted(address indexed wallet_address);
+    event AdminRevoked(address indexed wallet_address);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
@@ -38,7 +41,8 @@ contract UserRegistry {
     function registerUser(
         address wallet_address,
         string memory username,
-        string memory email
+        string memory email,
+        bool is_admin
     ) external onlyAdmin {
         require(!user_exists[wallet_address], "User already registered");
         require(bytes(username).length > 0, "Username cannot be empty");
@@ -50,7 +54,8 @@ contract UserRegistry {
             username: username,
             email: email,
             registration_date: block.timestamp,
-            is_authorized: true
+            is_authorized: true,
+            is_admin: is_admin
         });
 
         user_exists[wallet_address] = true;
@@ -66,7 +71,8 @@ contract UserRegistry {
             string memory username,
             string memory email,
             uint256 registration_date,
-            bool is_authorized
+            bool is_authorized,
+            bool is_admin
         )
     {
         require(user_exists[wallet_address], "User not found");
@@ -76,7 +82,8 @@ contract UserRegistry {
             user.username,
             user.email,
             user.registration_date,
-            user.is_authorized
+            user.is_authorized,
+            user.is_admin
         );
     }
 
@@ -87,7 +94,8 @@ contract UserRegistry {
             address wallet_address,
             string memory username,
             uint256 registration_date,
-            bool is_authorized
+            bool is_authorized,
+            bool is_admin
         )
     {
         address addr = email_to_address[email];
@@ -99,7 +107,8 @@ contract UserRegistry {
             user.wallet_address,
             user.username,
             user.registration_date,
-            user.is_authorized
+            user.is_authorized,
+            user.is_admin
         );
     }
 
@@ -114,6 +123,21 @@ contract UserRegistry {
         require(user_exists[wallet_address], "User not found");
         users[wallet_address].is_authorized = true;
         emit UserReactivated(wallet_address);
+    }
+
+    function grantAdmin(address wallet_address) external onlyAdmin {
+        require(user_exists[wallet_address], "User not found");
+        require(!users[wallet_address].is_admin, "User is already an admin");
+        users[wallet_address].is_admin = true;
+        emit AdminGranted(wallet_address);
+    }
+
+    function revokeAdmin(address wallet_address) external onlyAdmin {
+        require(user_exists[wallet_address], "User not found");
+        require(wallet_address != admin, "Cannot revoke primary admin");
+        require(users[wallet_address].is_admin, "User is not an admin");
+        users[wallet_address].is_admin = false;
+        emit AdminRevoked(wallet_address);
     }
 
     function isAuthorized(address wallet_address) external view returns (bool) {

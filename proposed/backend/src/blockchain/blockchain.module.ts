@@ -1,14 +1,13 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { BlockchainService } from './blockchain.service';
 import { BlockchainController } from './blockchain.controller';
-import { User } from '../users/user.entity';
-import { UsersModule } from '../users/users.module';
+import { AuthModule } from '../auth/auth.module';
+import { AuthorizedGuard } from '../auth/authorized.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), forwardRef(() => UsersModule)],
+  imports: [forwardRef(() => AuthModule)],
   controllers: [BlockchainController],
-  providers: [BlockchainService],
+  providers: [BlockchainService, AuthorizedGuard],
   exports: [BlockchainService],
 })
 export class BlockchainModule {}
