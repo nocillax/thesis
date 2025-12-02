@@ -11,7 +11,11 @@ export class IssueCertificateDto {
 
   @IsString()
   @IsNotEmpty()
-  degree_program: string;
+  degree: string;
+
+  @IsString()
+  @IsNotEmpty()
+  program: string;
 
   @IsNumber()
   @Min(0)
@@ -36,7 +40,11 @@ export class UpdateCertificateDto {
 
   @IsString()
   @IsNotEmpty()
-  degree_program: string;
+  degree: string;
+
+  @IsString()
+  @IsNotEmpty()
+  program: string;
 
   @IsNumber()
   @Min(0)

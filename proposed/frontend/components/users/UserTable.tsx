@@ -1,0 +1,355 @@
+"use client";
+
+import { useState } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type SortingState,
+  type RowSelectionState,
+  flexRender,
+} from "@tanstack/react-table";
+import {
+  Lock,
+  Unlock,
+  ShieldCheck,
+  ShieldX,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  Crown,
+  Loader2,
+} from "lucide-react";
+import { User } from "@/types/user";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { CopyButton } from "@/components/common/CopyButton";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { formatDate, truncateAddress } from "@/lib/utils/format";
+import {
+  useBulkRevokeUsers,
+  useBulkReactivateUsers,
+  useBulkGrantAdmin,
+  useBulkRevokeAdmin,
+} from "@/lib/hooks/useUsers";
+
+interface UserTableProps {
+  data: User[];
+}
+
+export function UserTable({ data }: UserTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  const { mutate: bulkRevoke, isPending: isRevoking } = useBulkRevokeUsers();
+  const { mutate: bulkReactivate, isPending: isReactivating } =
+    useBulkReactivateUsers();
+  const { mutate: bulkGrantAdmin, isPending: isGrantingAdmin } =
+    useBulkGrantAdmin();
+  const { mutate: bulkRevokeAdmin, isPending: isRevokingAdmin } =
+    useBulkRevokeAdmin();
+
+  const isAnyOperationPending =
+    isRevoking || isReactivating || isGrantingAdmin || isRevokingAdmin;
+
+  const columns: ColumnDef<User>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "wallet_address",
+      header: "Wallet Address",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <code className="text-xs bg-accent px-2 py-1 rounded border">
+            {truncateAddress(row.original.wallet_address)}
+          </code>
+          <CopyButton text={row.original.wallet_address} label="Copy Address" />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "username",
+      header: ({ column }) => {
+        const isSorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="flex items-center gap-1"
+          >
+            Username
+            {isSorted === "asc" ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : isSorted === "desc" ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="h-4 w-4" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{row.original.username}</span>
+          {row.original.is_admin && (
+            <Badge
+              variant="outline"
+              className="bg-primary/10 text-primary border-primary"
+            >
+              <Crown className="h-3 w-3 mr-1" />
+              Admin
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+    },
+    {
+      accessorKey: "is_authorized",
+      header: "Status",
+      cell: ({ row }) => <StatusBadge isActive={row.original.is_authorized} />,
+    },
+  ];
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      rowSelection,
+    },
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const selectedCount = selectedRows.length;
+
+  const handleBulkRevoke = () => {
+    const addresses = selectedRows.map((row) => row.original.wallet_address);
+    bulkRevoke(addresses, {
+      onSuccess: () => {
+        setRowSelection({});
+      },
+    });
+  };
+
+  const handleBulkReactivate = () => {
+    const addresses = selectedRows.map((row) => row.original.wallet_address);
+    bulkReactivate(addresses, {
+      onSuccess: () => {
+        setRowSelection({});
+      },
+    });
+  };
+
+  const handleBulkGrantAdmin = () => {
+    const addresses = selectedRows.map((row) => row.original.wallet_address);
+    bulkGrantAdmin(addresses, {
+      onSuccess: () => {
+        setRowSelection({});
+      },
+    });
+  };
+
+  const handleBulkRevokeAdmin = () => {
+    const addresses = selectedRows.map((row) => row.original.wallet_address);
+    bulkRevokeAdmin(addresses, {
+      onSuccess: () => {
+        setRowSelection({});
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-4 relative">
+      {/* Loading Overlay */}
+      {isAnyOperationPending && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium">Processing...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Always Visible Toolbar with 4 Separate Buttons */}
+      <div className="flex items-center gap-2 p-4 border rounded-lg bg-accent/50">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkRevoke}
+                disabled={selectedCount === 0 || isAnyOperationPending}
+                className="flex items-center gap-2"
+              >
+                <Lock className="h-4 w-4" />
+                {selectedCount > 0 && (
+                  <span className="text-xs">({selectedCount})</span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Revoke Access</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkReactivate}
+                disabled={selectedCount === 0 || isAnyOperationPending}
+                className="flex items-center gap-2"
+              >
+                <Unlock className="h-4 w-4" />
+                {selectedCount > 0 && (
+                  <span className="text-xs">({selectedCount})</span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Authorize Access</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkGrantAdmin}
+                disabled={selectedCount === 0 || isAnyOperationPending}
+                className="flex items-center gap-2"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                {selectedCount > 0 && (
+                  <span className="text-xs">({selectedCount})</span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Grant Admin</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkRevokeAdmin}
+                disabled={selectedCount === 0 || isAnyOperationPending}
+                className="flex items-center gap-2"
+              >
+                <ShieldX className="h-4 w-4" />
+                {selectedCount > 0 && (
+                  <span className="text-xs">({selectedCount})</span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Revoke Admin</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {selectedCount > 0 && (
+          <span className="text-sm text-muted-foreground ml-2">
+            {selectedCount} of {data.length} selected
+          </span>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.length > 0 ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={
+                    !row.original.is_authorized
+                      ? "bg-destructive/10 hover:bg-destructive/20 opacity-75"
+                      : "hover:bg-muted/50"
+                  }
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No users found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}

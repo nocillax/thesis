@@ -177,30 +177,75 @@ Authorization: Bearer YOUR_TOKEN
 Authorization: Bearer YOUR_TOKEN
 ```
 
-**Response:**
+**Query Parameters (Optional):**
+
+- `page` - Page number (default: return all)
+- `limit` - Items per page (default: return all)
+- `status` - Filter by status: `authorized` or `revoked`
+
+**Examples:**
+
+```bash
+# Get all users (no pagination)
+GET /api/blockchain/users
+
+# Get page 1 with 20 users per page
+GET /api/blockchain/users?page=1&limit=20
+
+# Get page 2 of active users only
+GET /api/blockchain/users?page=2&limit=10&status=authorized
+
+# Get revoked users
+GET /api/blockchain/users?status=revoked
+```
+
+**Response (without pagination):**
 
 ```json
 [
   {
     "wallet_address": "0xFE3B...",
     "username": "admin",
-    "email": "adminauthorization revoked",
-  "wallet_address": "0x1234..."
-}
-```
-
-**Note:** Sets `is_authorized=false` on blockchain. User can no longer issue certificates.
-
----
-
-## 6"is_admin": false
-
-}
+    "email": "admin@university.edu",
+    "registration_date": "2025-11-27T01:28:41.000Z",
+    "is_authorized": true,
+    "is_admin": true
+  },
+  {
+    "wallet_address": "0x1234...",
+    "username": "john_doe",
+    "email": "john@university.edu",
+    "registration_date": "2025-11-28T10:15:30.000Z",
+    "is_authorized": true,
+    "is_admin": false
+  }
 ]
-
 ```
 
-**Note:** Returns all registered users from blockchain.
+**Response (with pagination):**
+
+```json
+{
+  "data": [
+    {
+      "wallet_address": "0xFE3B...",
+      "username": "admin",
+      "email": "admin@university.edu",
+      "registration_date": "2025-11-27T01:28:41.000Z",
+      "is_authorized": true,
+      "is_admin": true
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_count": 95,
+    "has_more": true
+  }
+}
+```
+
+**Note:** Returns all registered users from blockchain. Use pagination for large datasets.
 
 ---
 
@@ -216,7 +261,7 @@ Authorization: Bearer YOUR_TOKEN
 
 Authorization: Bearer YOUR_TOKEN
 
-````
+```
 
 **Example:** `PATCH /api/blockchain/users/0x1234.../revoke`
 
@@ -228,7 +273,7 @@ Authorization: Bearer YOUR_TOKEN
   "message": "User revoked on blockchain",
   "wallet_address": "0x1234..."
 }
-````
+```
 
 **Note:** Sets `is_authorized=false` on blockchain. User can no longer issue certificates.
 
@@ -330,7 +375,29 @@ Authorization: Bearer YOUR_TOKEN
 Authorization: Bearer YOUR_TOKEN
 ```
 
-**Response:**
+**Query Parameters (Optional):**
+
+- `page` - Page number (default: return all)
+- `limit` - Items per page (default: return all)
+- `status` - Filter by status: `active` or `revoked`
+
+**Examples:**
+
+```bash
+# Get all certificates (no pagination)
+GET /api/blockchain/certificates
+
+# Get page 1 with 20 certificates per page
+GET /api/blockchain/certificates?page=1&limit=20
+
+# Get page 2 of active certificates only
+GET /api/blockchain/certificates?page=2&limit=10&status=active
+
+# Get revoked certificates
+GET /api/blockchain/certificates?status=revoked
+```
+
+**Response (without pagination):**
 
 ```json
 [
@@ -340,7 +407,7 @@ Authorization: Bearer YOUR_TOKEN
     "version": 1,
     "student_name": "Alice Johnson",
     "degree_program": "Computer Science",
-    "cgpa": 3.85,
+    "cgpa": 385,
     "issuing_authority": "Tech University",
     "issuer": "0x08Bd40C733...",
     "issuer_name": "admin",
@@ -351,7 +418,36 @@ Authorization: Bearer YOUR_TOKEN
 ]
 ```
 
-**Note:** Certificates are now versioned by student_id. Each student can have multiple versions (v1, v2, v3...).
+**Response (with pagination):**
+
+```json
+{
+  "data": [
+    {
+      "cert_hash": "0xabcd1234...",
+      "student_id": "22-46734-1",
+      "version": 1,
+      "student_name": "Alice Johnson",
+      "degree_program": "Computer Science",
+      "cgpa": 385,
+      "issuing_authority": "Tech University",
+      "issuer": "0x08Bd40C733...",
+      "issuer_name": "admin",
+      "is_revoked": false,
+      "signature": "0x9abc...",
+      "issuance_date": "2025-11-27T01:28:41.000Z"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 8,
+    "total_count": 157,
+    "has_more": true
+  }
+}
+```
+
+**Note:** Certificates are versioned by student_id. Each student can have multiple versions (v1, v2, v3...). Use pagination for large datasets.
 
 ---
 

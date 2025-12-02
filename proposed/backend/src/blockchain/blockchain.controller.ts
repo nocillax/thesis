@@ -10,11 +10,15 @@ import {
   HttpCode,
   HttpStatus,
   Request,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
 import { AuthorizedGuard } from '../auth/authorized.guard';
 import { BlockchainService } from './blockchain.service';
+import { PdfService } from './pdf.service';
 import {
   IssueCertificateDto,
   VerifyCertificateDto,
@@ -24,7 +28,10 @@ import { RegisterUserDto } from './dto/user.dto';
 
 @Controller('api/blockchain')
 export class BlockchainController {
-  constructor(private blockchainService: BlockchainService) {}
+  constructor(
+    private blockchainService: BlockchainService,
+    private pdfService: PdfService,
+  ) {}
 
   // ========== USER MANAGEMENT ENDPOINTS ==========
 
@@ -48,8 +55,42 @@ export class BlockchainController {
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('users')
-  async getAllUsers() {
-    return this.blockchainService.getAllUsersFromBlockchain();
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: 'authorized' | 'revoked',
+  ) {
+    const allUsers = await this.blockchainService.getAllUsersFromBlockchain();
+
+    // Filter by status if provided
+    let filtered = allUsers;
+    if (status === 'authorized') {
+      filtered = allUsers.filter((u) => u.is_authorized);
+    } else if (status === 'revoked') {
+      filtered = allUsers.filter((u) => !u.is_authorized);
+    }
+
+    // Return all if no pagination params
+    if (!page || !limit) {
+      return filtered;
+    }
+
+    // Pagination
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const start = (pageNum - 1) * limitNum;
+    const end = start + limitNum;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      meta: {
+        current_page: pageNum,
+        total_pages: Math.ceil(filtered.length / limitNum),
+        total_count: filtered.length,
+        has_more: end < filtered.length,
+      },
+    };
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -112,7 +153,8 @@ export class BlockchainController {
     return this.blockchainService.issueCertificate(
       dto.student_id,
       dto.student_name,
-      dto.degree_program,
+      dto.degree,
+      dto.program,
       dto.cgpa,
       dto.issuing_authority,
       req.user.username,
@@ -122,8 +164,79 @@ export class BlockchainController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('certificates')
-  async getAllCertificates() {
-    return this.blockchainService.getAllCertificates();
+  async getAllCertificates(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: 'active' | 'revoked',
+  ) {
+    const allCerts = await this.blockchainService.getAllCertificates();
+
+    // Filter by status if provided
+    let filtered = allCerts;
+    if (status === 'active') {
+      filtered = allCerts.filter((c) => !c.is_revoked);
+    } else if (status === 'revoked') {
+      filtered = allCerts.filter((c) => c.is_revoked);
+    }
+
+    // Return all if no pagination params
+    if (!page || !limit) {
+      return filtered;
+    }
+
+    // Pagination
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const start = (pageNum - 1) * limitNum;
+    const end = start + limitNum;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      meta: {
+        current_page: pageNum,
+        total_pages: Math.ceil(filtered.length / limitNum),
+        total_count: filtered.length,
+        has_more: end < filtered.length,
+      },
+    };
+  }
+
+  // PDF routes must come before :cert_hash routes
+  @Get('certificates/:cert_hash/download')
+  async downloadCertificate(
+    @Param('cert_hash') cert_hash: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const certificate =
+      await this.blockchainService.verifyCertificate(cert_hash);
+    const pdfBuffer = await this.pdfService.generateCertificatePdf(certificate);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="certificate-${certificate.student_id}-v${certificate.version}.pdf"`,
+    });
+
+    return new StreamableFile(pdfBuffer);
+  }
+
+  @Get('certificates/:cert_hash/preview')
+  async previewCertificate(
+    @Param('cert_hash') cert_hash: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const certificate =
+      await this.blockchainService.verifyCertificate(cert_hash);
+    const pngBuffer = await this.pdfService.generateCertificatePng(certificate);
+
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
+
+    return new StreamableFile(pngBuffer);
   }
 
   @Get('certificates/verify/:cert_hash')

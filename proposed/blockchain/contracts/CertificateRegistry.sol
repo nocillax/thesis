@@ -17,7 +17,8 @@ contract CertificateRegistry {
         string student_id;
         uint256 version;
         string student_name;
-        string degree_program;
+        string degree;
+        string program;
         uint16 cgpa;
         string issuing_authority;
         address issuer;
@@ -76,7 +77,8 @@ contract CertificateRegistry {
         bytes32 cert_hash,
         string memory student_id,
         string memory student_name,
-        string memory degree_program,
+        string memory degree,
+        string memory program,
         uint16 cgpa,
         string memory issuing_authority,
         bytes memory signature,
@@ -102,7 +104,8 @@ contract CertificateRegistry {
             student_id: student_id,
             version: new_version,
             student_name: student_name,
-            degree_program: degree_program,
+            degree: degree,
+            program: program,
             cgpa: cgpa,
             issuing_authority: issuing_authority,
             issuer: issuer_address,
@@ -126,7 +129,8 @@ contract CertificateRegistry {
             string memory student_id,
             uint256 version,
             string memory student_name,
-            string memory degree_program,
+            string memory degree,
+            string memory program,
             uint16 cgpa,
             string memory issuing_authority,
             address issuer,
@@ -142,7 +146,8 @@ contract CertificateRegistry {
             cert.student_id,
             cert.version,
             cert.student_name,
-            cert.degree_program,
+            cert.degree,
+            cert.program,
             cert.cgpa,
             cert.issuing_authority,
             cert.issuer,

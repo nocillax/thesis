@@ -19,3 +19,8 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3YWxsZXRBZGRyZXNzIjoiMHhGRTNCNTU3RThGYjY
 <!-- wallet-pass -->
 
 cert_test1
+
+<!-- test users -->
+
+test1:
+private key: 0xd8b7e5bc21c440b8d1fe7e5e0822a6696a0ca871a5fda6e6f4dbd0815e915c26

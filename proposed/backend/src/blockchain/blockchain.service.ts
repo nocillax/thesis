@@ -9,11 +9,11 @@ import { ethers } from 'ethers';
 import { createHash } from 'crypto';
 
 const CONTRACT_ABI = [
-  'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature, address issuer_address) external',
-  'function verifyCertificate(bytes32 cert_hash) external view returns (string student_id, uint256 version, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
+  'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, bytes signature, address issuer_address) external',
+  'function verifyCertificate(bytes32 cert_hash) external view returns (string student_id, uint256 version, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
   'function revokeCertificate(bytes32 cert_hash) external',
   'function reactivateCertificate(bytes32 cert_hash) external',
-  'function getActiveCertificate(string student_id) external view returns (tuple(bytes32 cert_hash, string student_id, uint256 version, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date))',
+  'function getActiveCertificate(string student_id) external view returns (tuple(bytes32 cert_hash, string student_id, uint256 version, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date))',
   'function getAllVersions(string student_id) external view returns (bytes32[])',
   'function student_to_latest_version(string student_id) external view returns (uint256)',
   'function student_to_active_cert_hash(string student_id) external view returns (bytes32)',
@@ -150,7 +150,8 @@ export class BlockchainService implements OnModuleInit {
   async issueCertificate(
     student_id: string,
     student_name: string,
-    degree_program: string,
+    degree: string,
+    program: string,
     cgpa: number,
     issuing_authority: string,
     username: string,
@@ -166,7 +167,7 @@ export class BlockchainService implements OnModuleInit {
       const cert_hash = this.computeHash(
         student_id,
         student_name,
-        degree_program,
+        `${degree} - ${program}`,
         cgpa,
         version,
         issuance_date,
@@ -183,7 +184,8 @@ export class BlockchainService implements OnModuleInit {
         cert_hash,
         student_id,
         student_name,
-        degree_program,
+        degree,
+        program,
         cgpa_scaled,
         issuing_authority,
         signature,
@@ -248,7 +250,8 @@ export class BlockchainService implements OnModuleInit {
         student_id: result.student_id,
         version: Number(result.version),
         student_name: result.student_name,
-        degree_program: result.degree_program,
+        degree: result.degree,
+        program: result.program,
         cgpa: Number(result.cgpa) / 100,
         issuing_authority: result.issuing_authority,
         issuer: result.issuer,
@@ -492,6 +495,20 @@ export class BlockchainService implements OnModuleInit {
     try {
       if (!this.userRegistryContract) {
         throw new BadRequestException('UserRegistry not configured');
+      }
+
+      // Check if this is the last admin
+      const allUsers = await this.getAllUsersFromBlockchain();
+      const admins = allUsers.filter((user) => user.is_admin);
+
+      // If this is the only admin left, prevent removal
+      if (
+        admins.length === 1 &&
+        admins[0].wallet_address.toLowerCase() === walletAddress.toLowerCase()
+      ) {
+        throw new BadRequestException(
+          'Cannot revoke admin privileges from the last remaining admin',
+        );
       }
 
       const tx = await this.userRegistryContract.revokeAdmin(walletAddress);
