@@ -138,7 +138,8 @@ const contract = new ethers.Contract(contractAddress, abi, wallet);
 
 **What it does:**
 
-- Connects to your deployed CertificateRegistry (0x4261D524bc701dA4AC49339e5F8b299977045eA5)
+- CertificateRegistry: 0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD
+- UserRegistry: 0xECB550dE5c73e6690AB4521C03EC9D476617167E
 - Translates function calls to transactions
 - Parses return values
 - Handles events
@@ -163,16 +164,23 @@ const events = await contract.queryFilter(contract.filters.CertificateIssued());
 │ Your NestJS Backend                                      │
 │                                                          │
 │  ┌────────────┐                                         │
-│  │ User Wallet│ (decrypted from DB per-request)        │
+│  │Admin Wallet│ (signs all transactions)               │
+│  │0xFE3B557E..│ (pays gas via meta-transactions)       │
 │  └─────┬──────┘                                         │
 │        │ signs transactions                              │
 │        ↓                                                 │
 │  ┌────────────────────────────────────┐                │
-│  │          Contract                   │                │
-│  │  Address: 0x4261D524bc701dA4AC...  │                │
+│  │   CertificateRegistry Contract      │                │
+│  │  Address: 0xa1dc9167B1a8F201...    │                │
 │  │  ABI: [function definitions]        │                │
 │  └────────────┬───────────────────────┘                │
-│               │ uses                                     │
+│               │                                          │
+│  ┌────────────────────────────────────┐                │
+│  │   UserRegistry Contract             │                │
+│  │  Address: 0xECB550dE5c73e669...    │                │
+│  │  ABI: [function definitions]        │                │
+│  └────────────┬───────────────────────┘                │
+│               │ both use                                 │
 │               ↓                                          │
 │  ┌────────────────────────────────────┐                │
 │  │          Provider                   │                │
@@ -182,7 +190,7 @@ const events = await contract.queryFilter(contract.filters.CertificateIssued());
                 │ HTTP JSON-RPC
                 ↓
 ┌───────────────────────────────────────────────────────┐
-│ Quorum Validator1                                      │
+│ Quorum RPC Node                                        │
 │ Port 8545 (RPC endpoint)                              │
 └───────────────────────────────────────────────────────┘
 ```
@@ -381,15 +389,14 @@ console.log(this.adminWallet.address);
 // "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73"
 
 console.log(await this.adminWallet.getBalance());
-// BigInt("1000000000000000000000000000000000000") // From genesis allocation
+// BigInt("1000000000000000000000000000") // From genesis allocation
 
-// User wallet (generated dynamically per user)
-const userWallet = await this.getUserWallet("john_doe", "0x08Bd40C733...");
-console.log(userWallet.address);
-// "0x08Bd40C733f6184ed6DEc6c9F67ab05308b5Ed5E"
+console.log(await this.adminWallet.getNonce());
+// 347 (number of transactions sent by admin wallet)
 
-console.log(await userWallet.getNonce());
-// 5 (number of certificates issued by this user)
+// User wallets (generated during registration, imported to Rabby)
+// Users don't sign transactions - admin wallet handles all blockchain interactions
+// But issuer_address parameter records which user issued each certificate
 ```
 
 ### Signing Messages
@@ -397,8 +404,10 @@ console.log(await userWallet.getNonce());
 **Your code (inline in issueCertificate):**
 
 ```typescript
-const userWallet = await this.getUserWallet(username, walletAddress);
-const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
+// Backend signs with admin wallet (can be updated to accept user signatures in future)
+const signature = await this.adminWallet.signMessage(
+  ethers.getBytes(cert_hash)
+);
 ```
 
 **What `signMessage` does:**
@@ -412,7 +421,7 @@ const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
    messageHash = keccak256(message)
 
 3. Sign with ECDSA:
-   signature = ECDSA_sign(messageHash, user_private_key)
+   signature = ECDSA_sign(messageHash, admin_private_key)
 
 4. Format signature:
    r: 32 bytes
@@ -427,7 +436,7 @@ const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
 "0x7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e1b"
 ```
 
-**Key difference:** Each user signs with their own wallet, creating individual accountability!
+**Meta-transaction pattern:** Admin wallet signs and pays gas, but `issuer_address` parameter records the actual user who issued the certificate. This maintains accountability while simplifying gas management!
 
 ### Signing Transactions
 
@@ -486,13 +495,32 @@ this.contract = new ethers.Contract(
 
 ```typescript
 const CONTRACT_ABI = [
-  "function issueCertificate(bytes32 cert_hash, string student_name, string degree_program, uint8 cgpa, string issuing_authority, bytes signature) external",
-  "function verifyCertificate(bytes32 cert_hash) external view returns (string student_name, string degree_program, uint8 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)",
+  "function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree_program, uint16 cgpa, string issuing_authority, bytes signature, address issuer_address) external",
+  "function verifyCertificate(bytes32 cert_hash) external view returns (string student_id, uint256 version, string student_name, string degree_program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)",
   "function revokeCertificate(bytes32 cert_hash) external",
   "function reactivateCertificate(bytes32 cert_hash) external",
-  "event CertificateIssued(bytes32 indexed cert_hash, address indexed issuer, uint256 block_number)",
+  "function getActiveCertificate(string student_id) external view returns (tuple(...))",
+  "function getAllVersions(string student_id) external view returns (bytes32[])",
+  "function student_to_latest_version(string student_id) external view returns (uint256)",
+  "function student_to_active_cert_hash(string student_id) external view returns (bytes32)",
+  "event CertificateIssued(bytes32 indexed cert_hash, string indexed student_id, uint256 version, address indexed issuer, uint256 block_number)",
   "event CertificateRevoked(bytes32 indexed cert_hash, address indexed revoked_by, uint256 block_number)",
   "event CertificateReactivated(bytes32 indexed cert_hash, address indexed reactivated_by, uint256 block_number)",
+];
+
+const USER_REGISTRY_ABI = [
+  "function registerUser(address wallet_address, string username, string email, bool is_admin) external",
+  "function getUser(address wallet_address) external view returns (string username, string email, uint256 registration_date, bool is_authorized, bool is_admin)",
+  "function getUserByEmail(string email) external view returns (address wallet_address, string username, uint256 registration_date, bool is_authorized, bool is_admin)",
+  "function revokeUser(address wallet_address) external",
+  "function reactivateUser(address wallet_address) external",
+  "function grantAdmin(address wallet_address) external",
+  "function revokeAdmin(address wallet_address) external",
+  "function isAuthorized(address wallet_address) external view returns (bool)",
+  "function userExists(address wallet_address) external view returns (bool)",
+  "event UserRegistered(address indexed wallet_address, string username, string email, uint256 registration_date)",
+  "event UserRevoked(address indexed wallet_address)",
+  "event UserReactivated(address indexed wallet_address)",
 ];
 ```
 
@@ -515,13 +543,13 @@ When you compile your contract with Hardhat, it generates a complete ABI:
     "name": "issueCertificate",
     "inputs": [
       { "name": "cert_hash", "type": "bytes32" },
-      { "name": "certificate_number", "type": "string" },
       { "name": "student_id", "type": "string" },
       { "name": "student_name", "type": "string" },
       { "name": "degree_program", "type": "string" },
       { "name": "cgpa", "type": "uint16" },
       { "name": "issuing_authority", "type": "string" },
-      { "name": "signature", "type": "bytes" }
+      { "name": "signature", "type": "bytes" },
+      { "name": "issuer_address", "type": "address" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -623,6 +651,63 @@ const receipt = await tx.wait();
 
 Let's analyze your entire `blockchain.service.ts` file function by function.
 
+### registerNewUser Function
+
+```typescript
+async registerNewUser(
+  username: string,
+  email: string,
+  is_admin: boolean = false,
+) {
+  if (!this.userRegistryContract) {
+    throw new BadRequestException('UserRegistry not configured');
+  }
+
+  // Generate random wallet for new user
+  const newWallet = ethers.Wallet.createRandom();
+  const walletAddress = newWallet.address;
+  const privateKey = newWallet.privateKey;
+
+  try {
+    // Register user on UserRegistry contract
+    const tx = await this.userRegistryContract.registerUser(
+      walletAddress,
+      username,
+      email,
+      is_admin,
+    );
+    const receipt = await tx.wait();
+
+    console.log(`✅ User registered: ${username} (${walletAddress})`);
+
+    return {
+      success: true,
+      message: 'User registered successfully. Import private key to Rabby wallet.',
+      wallet_address: walletAddress,
+      private_key: privateKey,  // ⚠️ Returned ONCE for Rabby import
+      username,
+      email,
+      is_admin,
+      transaction_hash: receipt.hash,
+      block_number: receipt.blockNumber,
+    };
+  } catch (error) {
+    if (error.reason) {
+      throw new BadRequestException(error.reason);
+    }
+    throw new BadRequestException(error.message || 'Failed to register user');
+  }
+}
+```
+
+**Key points:**
+
+1. **Wallet generation:** `ethers.Wallet.createRandom()` creates a new random wallet
+2. **Private key security:** Returned ONCE for user to import to Rabby wallet
+3. **No storage:** Private key NOT stored in backend (user's responsibility)
+4. **UserRegistry contract:** Stores username, email, is_admin, is_authorized on blockchain
+5. **Admin signs:** Admin wallet calls `registerUser()` and pays gas
+
 ### Module Initialization
 
 ```typescript
@@ -638,7 +723,11 @@ async onModuleInit() {
 
   this.provider = new ethers.JsonRpcProvider(rpcUrl);
   this.adminWallet = new ethers.Wallet(privateKey, this.provider);
-  this.certificateContract = new ethers.Contract(certificateAddress, CONTRACT_ABI, this.adminWallet);
+  this.certificateContract = new ethers.Contract(
+    certificateAddress,
+    CONTRACT_ABI,
+    this.adminWallet,
+  );
 
   if (userRegistryAddress) {
     this.userRegistryContract = new ethers.Contract(
@@ -646,13 +735,12 @@ async onModuleInit() {
       USER_REGISTRY_ABI,
       this.adminWallet,
     );
-    console.log(`   User Registry: ${userRegistryAddress}`);
   }
 
   console.log('✅ Blockchain service initialized');
   console.log(`   RPC: ${rpcUrl}`);
-  console.log(`   Contract: ${certificateAddress}`);
-  console.log(`   Admin Wallet: ${this.adminWallet.address}`);
+  console.log(`   Certificate Contract: ${certificateAddress}`);
+  console.log(`   User Registry Contract: ${userRegistryAddress}`);
 }
 ```
 
@@ -690,7 +778,7 @@ computeHash(
   student_name: string,
   degree_program: string,
   cgpa: number,
-  certificate_number: string,
+  version: number,
   issuance_date: number,
 ): string {
   const data =
@@ -698,7 +786,7 @@ computeHash(
     student_name +
     degree_program +
     cgpa.toString() +
-    certificate_number +
+    version.toString() +
     issuance_date.toString();
   return ethers.keccak256(ethers.toUtf8Bytes(data));
 }
@@ -709,25 +797,19 @@ computeHash(
 **Example input:**
 
 ```typescript
-student_id: "20101001";
-student_name: "Ahmed Rahman";
-degree_program: "Computer Science";
-cgpa: 3.92;
-certificate_number: "BRAC-CSE-2024-101";
+student_id: "22-46734-1";
+student_name: "Alice";
+degree_program: "BSc CS";
+cgpa: 3.85;
+version: 1;
 issuance_date: 1700000000;
 ```
 
 **Step 1: Concatenate**
 
 ```javascript
-const data =
-  "20101001" +
-  "Ahmed Rahman" +
-  "Computer Science" +
-  "3.92" +
-  "BRAC-CSE-2024-101" +
-  "1700000000";
-// Result: "20101001Ahmed RahmanComputer Science3.92BRAC-CSE-2024-1011700000000"
+const data = "22-46734-1" + "Alice" + "BSc CS" + "3.85" + "1" + "1700000000";
+// Result: "22-46734-1AliceBSc CS3.8511700000000"
 ```
 
 **Step 2: Convert to UTF-8 bytes**
@@ -764,7 +846,6 @@ bytes32 cert_hash = keccak256(abi.encodePacked(student_id, student_name, ...));
 
 ```typescript
 async issueCertificate(
-  certificate_number: string,
   student_id: string,
   student_name: string,
   degree_program: string,
@@ -773,53 +854,67 @@ async issueCertificate(
   username: string,
   walletAddress: string,
 ) {
-  const issuance_date = Math.floor(Date.now() / 1000);
-  const cert_hash = this.computeHash(
-    student_id,
-    student_name,
-    degree_program,
-    cgpa,
-    certificate_number,
-    issuance_date,
-  );
+  try {
+    // Check if student already has an active certificate
+    const latestVersion = await this.certificateContract.student_to_latest_version(student_id);
+    const version = Number(latestVersion) + 1;
 
-  // Get user's wallet from database (decrypts private key)
-  const userWallet = await this.getUserWallet(username, walletAddress);
+    const issuance_date = Math.floor(Date.now() / 1000);
+    const cert_hash = this.computeHash(
+      student_id,
+      student_name,
+      degree_program,
+      cgpa,
+      version,
+      issuance_date,
+    );
 
-  // Register issuer if not already registered (username as issuer_name)
-  const existingName = await this.certificateContract.getIssuerName(userWallet.address);
-  if (!existingName || existingName.length === 0) {
-    await this.registerIssuer(username, userWallet);
+    // Backend signs with admin wallet (can be updated to accept user signatures in future)
+    const signature = await this.adminWallet.signMessage(
+      ethers.getBytes(cert_hash),
+    );
+    const cgpa_scaled = Math.round(cgpa * 100);
+
+    // Admin wallet pays gas, but actual issuer is recorded
+    const tx = await this.certificateContract.issueCertificate(
+      cert_hash,
+      student_id,
+      student_name,
+      degree_program,
+      cgpa_scaled,
+      issuing_authority,
+      signature,
+      walletAddress,  // Actual issuer recorded (meta-transaction pattern)
+    );
+
+    const receipt = await tx.wait();
+
+    return {
+      success: true,
+      student_id,
+      version,
+      cert_hash,
+      transaction_hash: receipt.hash,
+      block_number: receipt.blockNumber,
+      signature,
+    };
+  } catch (error) {
+    console.error('❌ Certificate issuance failed:', error);
+
+    // Extract clean error message from smart contract revert
+    if (error.reason) {
+      throw new BadRequestException(error.reason);
+    }
+
+    // Handle CALL_EXCEPTION errors with revert data
+    if (error.code === 'CALL_EXCEPTION' && error.revert?.args?.[0]) {
+      throw new BadRequestException(error.revert.args[0]);
+    }
+
+    throw new BadRequestException(
+      error.message || 'Failed to issue certificate',
+    );
   }
-
-  // Sign with user's wallet
-  const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
-  const cgpa_scaled = Math.round(cgpa * 100);
-
-  // Use user's wallet to sign transaction
-  const contractWithUserSigner = this.certificateContract.connect(userWallet);
-
-  const tx = await contractWithUserSigner.issueCertificate(
-    cert_hash,
-    certificate_number,
-    student_id,
-    student_name,
-    degree_program,
-    cgpa_scaled,
-    issuing_authority,
-    signature,
-  );
-
-  const receipt = await tx.wait();
-
-  return {
-    success: true,
-    certificate_number,
-    cert_hash,
-    transaction_hash: receipt.hash,
-    block_number: receipt.blockNumber,
-    signature,
-  };
 }
 ```
 
@@ -961,16 +1056,30 @@ return {
 async verifyCertificate(cert_hash: string) {
   const result = await this.contract.verifyCertificate(cert_hash);
 
+  // Fetch issuer name from UserRegistry
+  let issuerName = 'Unknown';
+  try {
+    if (this.userRegistryContract) {
+      const userInfo = await this.userRegistryContract.getUser(result.issuer);
+      issuerName = userInfo.username;
+    }
+  } catch (error) {
+    console.warn(`⚠️  Could not fetch issuer name for ${result.issuer}`);
+  }
+
   return {
     cert_hash,
+    student_id: result.student_id,
+    version: Number(result.version),
     student_name: result.student_name,
     degree_program: result.degree_program,
     cgpa: Number(result.cgpa) / 100,
     issuing_authority: result.issuing_authority,
     issuer: result.issuer,
+    issuer_name: issuerName,
     is_revoked: result.is_revoked,
     signature: result.signature,
-    issuance_date: Number(result.issuance_date),
+    issuance_date: new Date(Number(result.issuance_date) * 1000).toISOString(),
   };
 }
 ```
@@ -985,17 +1094,30 @@ const result = await this.contract.verifyCertificate(cert_hash);
 
 ```javascript
 {
-  certificate_number: "BRAC-CSE-2024-101",
-  student_id: "20101001",
-  student_name: "Ahmed Rahman",
-  degree_program: "Computer Science",
-  cgpa: 392n,  // BigInt (uint16)
+  student_id: "22-46734-1",
+  version: 1n,  // BigInt (uint256)
+  student_name: "Alice",
+  degree_program: "BSc CS",
+  cgpa: 385n,  // BigInt (uint16)
   issuing_authority: "BRAC University",
-  issuer: "0x08Bd40C733f6184ed6DEc6c9F67ab05308b5Ed5E",  // User's wallet
-  issuer_name: "john_doe",  // User's username
+  issuer: "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73",  // Admin wallet (meta-transaction)
   is_revoked: false,
   signature: "0x7c8d9e0f...",
   issuance_date: 1700000000n  // BigInt
+}
+```
+
+**Note:** Backend then fetches issuer name from UserRegistry contract:
+
+```typescript
+let issuerName = "Unknown";
+try {
+  if (this.userRegistryContract) {
+    const userInfo = await this.userRegistryContract.getUser(result.issuer);
+    issuerName = userInfo.username;
+  }
+} catch (error) {
+  console.warn(`⚠️  Could not fetch issuer name for ${result.issuer}`);
 }
 ```
 
@@ -1055,6 +1177,63 @@ async revokeCertificate(cert_hash: string) {
 - Computing hash (already have it)
 - Signing message (transaction is automatically signed)
 - Transforming data (no return values from contract)
+
+### registerNewUser Function
+
+```typescript
+async registerNewUser(
+  username: string,
+  email: string,
+  is_admin: boolean = false,
+) {
+  if (!this.userRegistryContract) {
+    throw new BadRequestException('UserRegistry not configured');
+  }
+
+  // Generate random wallet for new user
+  const newWallet = ethers.Wallet.createRandom();
+  const walletAddress = newWallet.address;
+  const privateKey = newWallet.privateKey;
+
+  try {
+    // Register user on UserRegistry contract
+    const tx = await this.userRegistryContract.registerUser(
+      walletAddress,
+      username,
+      email,
+      is_admin,
+    );
+    const receipt = await tx.wait();
+
+    console.log(`✅ User registered: ${username} (${walletAddress})`);
+
+    return {
+      success: true,
+      message: 'User registered successfully. Import private key to Rabby wallet.',
+      wallet_address: walletAddress,
+      private_key: privateKey,  // ⚠️ Returned ONCE for Rabby import
+      username,
+      email,
+      is_admin,
+      transaction_hash: receipt.hash,
+      block_number: receipt.blockNumber,
+    };
+  } catch (error) {
+    if (error.reason) {
+      throw new BadRequestException(error.reason);
+    }
+    throw new BadRequestException(error.message || 'Failed to register user');
+  }
+}
+```
+
+**Key points:**
+
+1. **Wallet generation:** `ethers.Wallet.createRandom()` creates a new random wallet
+2. **Private key security:** Returned ONCE for user to import to Rabby wallet
+3. **No storage:** Private key NOT stored in backend (user's responsibility)
+4. **UserRegistry contract:** Stores username, email, is_admin, is_authorized on blockchain
+5. **Admin signs:** Admin wallet calls `registerUser()` and pays gas
 
 ### getAuditLogs Function
 
@@ -1628,14 +1807,14 @@ const tx = await contract.issueCertificate(..., {
 
 **2. Wallet:**
 
-- Admin wallet: 0xFE3B557E... (for system operations)
-- User wallets: Decrypted from database per-request
-- Each user signs with their own wallet (accountability)
+- Admin wallet: 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73 (signs all transactions)
+- User wallets: Generated during registration (imported to Rabby wallet)
+- Admin signs, but issuer_address parameter records actual user (meta-transaction pattern)
 
 **3. Contract:**
 
-- CertificateRegistry at 0x4261D524bc701dA4AC49339e5F8b299977045eA5
-- UserRegistry at 0xC9Bc439c8723c5c6fdbBE14E5fF3a1224f8A0f7C
+- CertificateRegistry: 0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD
+- UserRegistry: 0xECB550dE5c73e6690AB4521C03EC9D476617167E
 - Translates JavaScript calls to blockchain transactions
 - Handles encoding/decoding
 
@@ -1644,16 +1823,18 @@ const tx = await contract.issueCertificate(..., {
 ```
 API Request (with JWT)
     ↓
-Backend checks authorization (RolesGuard)
+Backend checks authorization (JWT auth + RolesGuard)
     ↓
-getUserWallet() → Decrypt user's private key
+Extract walletAddress from JWT (actual issuer)
     ↓
-computeHash() → Creates unique identifier
+Check student_to_latest_version() → Determine next version
     ↓
-userWallet.signMessage() → Sign with user's wallet
+computeHash() → Creates unique identifier (includes version)
     ↓
-contract.connect(userWallet).issueCertificate() → Send transaction
+adminWallet.signMessage() → Sign with admin's wallet
     ↓
+certificateContract.issueCertificate(..., issuer_address) → Send transaction
+    ↓ (Admin wallet pays gas, issuer_address records actual user)
 tx.wait() → Waits for confirmation
     ↓
 Return receipt → API response

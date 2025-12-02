@@ -110,7 +110,6 @@ Frontend displays success message
 
 User fills form in browser:
 
-- Certificate Number: "BRAC-CSE-2024-101"
 - Student ID: "20101001"
 - Student Name: "Alice Johnson"
 - CGPA: 3.85
@@ -118,6 +117,8 @@ User fills form in browser:
 - Issue Date: 2024-11-25
 
 User clicks **"Issue Certificate"** button.
+
+**Note:** No certificate number needed - system auto-generates version numbers (1, 2, 3...) for each student.
 
 ### Frontend Code
 
@@ -129,7 +130,6 @@ const response = await fetch("http://localhost:3001/certificates", {
     Authorization: "Bearer <JWT_TOKEN>",
   },
   body: JSON.stringify({
-    certificateNumber: "BRAC-CSE-2024-101",
     studentId: "20101001",
     studentName: "Alice Johnson",
     cgpa: 3.85,
@@ -156,7 +156,6 @@ Content-Length: 123
 
 ```json
 {
-  "certificateNumber": "BRAC-CSE-2024-101",
   "studentId": "20101001",
   "studentName": "Alice Johnson",
   "cgpa": 3.85,
@@ -211,10 +210,6 @@ export class CertificatesController {
 export class CreateCertificateDto {
   @IsString()
   @IsNotEmpty()
-  certificateNumber: string;
-
-  @IsString()
-  @IsNotEmpty()
   studentId: string;
 
   @IsString()
@@ -239,7 +234,6 @@ export class CreateCertificateDto {
 
 NestJS automatically validates:
 
-- ✅ `certificateNumber` is non-empty string
 - ✅ `studentId` is non-empty string
 - ✅ `studentName` is non-empty string, max 100 chars
 - ✅ `cgpa` is number between 0-4
@@ -269,8 +263,8 @@ export class CertificatesService {
     const timestamp = new Date(dto.issueDate).getTime() / 1000; // 1732579200
 
     // Call blockchain service with user info
+    // Note: No certificate number - version auto-generated on blockchain
     const txReceipt = await this.blockchainService.issueCertificate(
-      dto.certificateNumber,
       dto.studentId,
       dto.studentName,
       dto.degree,
@@ -332,30 +326,44 @@ export class BlockchainService implements OnModuleInit {
 
     // Load admin wallet from private key
     this.adminWallet = new ethers.Wallet(
-      process.env.PRIVATE_KEY, // 0x8f2a55...
+      process.env.PRIVATE_KEY, // 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73
       this.provider
     );
 
-    // Create contract instance
+    // Create contract instances
     this.certificateContract = new ethers.Contract(
-      process.env.CONTRACT_ADDRESS, // 0x4261D524bc701dA4AC49339e5F8b299977045eA5
+      process.env.CONTRACT_ADDRESS, // 0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD
       CONTRACT_ABI,
+      this.adminWallet // Admin wallet signs all transactions
+    );
+
+    this.userRegistryContract = new ethers.Contract(
+      process.env.USER_REGISTRY_ADDRESS, // 0xECB550dE5c73e6690AB4521C03EC9D476617167E
+      USER_REGISTRY_ABI,
       this.adminWallet
     );
   }
 
-  // Decrypt user's private key from database
-  private async getUserWallet(
-    username: string,
-    walletAddress: string
-  ): Promise<ethers.Wallet> {
-    const user = await this.usersRepository.findOne({ where: { username } });
-    const privateKey = this.decryptPrivateKey(user.encrypted_private_key);
-    return new ethers.Wallet(privateKey, this.provider);
+  // Compute hash with version instead of certificate_number
+  computeHash(
+    student_id: string,
+    student_name: string,
+    degree_program: string,
+    cgpa: number,
+    version: number,
+    issuance_date: number
+  ): string {
+    const data =
+      student_id +
+      student_name +
+      degree_program +
+      cgpa.toString() +
+      version.toString() +
+      issuance_date.toString();
+    return ethers.keccak256(ethers.toUtf8Bytes(data));
   }
 
   async issueCertificate(
-    certificateNumber: string,
     studentId: string,
     studentName: string,
     degree: string,
@@ -364,39 +372,40 @@ export class BlockchainService implements OnModuleInit {
     username: string,
     walletAddress: string
   ): Promise<ethers.TransactionReceipt> {
-    // Get user's wallet (decrypts private key from database)
-    const userWallet = await this.getUserWallet(username, walletAddress);
+    // Check current version for this student
+    const latestVersion =
+      await this.certificateContract.student_to_latest_version(studentId);
+    const version = Number(latestVersion) + 1; // Auto-increment version
 
-    // Register issuer if not already registered
-    const existingName = await this.certificateContract.getIssuerName(
-      userWallet.address
-    );
-    if (!existingName) {
-      await this.registerIssuer(username, userWallet);
-    }
+    const issuance_date = Math.floor(Date.now() / 1000);
 
-    // Sign certificate hash with user's wallet
+    // Compute hash with version
     const cert_hash = this.computeHash(
       studentId,
       studentName,
       degree,
       cgpa,
-      certificateNumber,
-      Math.floor(Date.now() / 1000)
+      version,
+      issuance_date
     );
-    const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
 
-    // Call smart contract function with user's wallet
-    const contractWithUserSigner = this.certificateContract.connect(userWallet);
-    const tx = await contractWithUserSigner.issueCertificate(
+    // ADMIN wallet signs (meta-transaction pattern)
+    const signature = await this.adminWallet.signMessage(
+      ethers.getBytes(cert_hash)
+    );
+
+    const cgpa_scaled = Math.round(cgpa * 100);
+
+    // Admin wallet signs transaction, but walletAddress is recorded as issuer
+    const tx = await this.certificateContract.issueCertificate(
       cert_hash,
-      certificateNumber,
       studentId,
       studentName,
       degree,
-      cgpa,
+      cgpa_scaled,
       issuingAuthority,
-      signature
+      signature,
+      walletAddress // Actual user's address (from JWT)
     );
 
     // Wait for transaction to be mined
@@ -413,9 +422,9 @@ When you call `contract.issueCertificate(...)`, ethers.js:
 **1. Computes Function Selector**
 
 ```
-Function signature: "issueCertificate(bytes32,string,string,string,string,uint16,string,bytes)"
-Keccak256 hash: 0x8f9a3b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a
-First 4 bytes: 0x8f9a3b2c (function selector)
+Function signature: "issueCertificate(bytes32,string,string,string,uint16,string,bytes,address)"
+Keccak256 hash: 0x...
+First 4 bytes: Function selector
 ```
 
 **2. Encodes Parameters (ABI Encoding)**
@@ -423,9 +432,6 @@ First 4 bytes: 0x8f9a3b2c (function selector)
 ```
 cert_hash: 0x4a3f9e2d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3e2d1c0b9a8f7e6d5c4b3a2e1d
   → 32 bytes (bytes32)
-
-certificateNumber: "BRAC-CSE-2024-101"
-  → Offset, Length, Data (string)
 
 studentId: "20101001"
   → Offset, Length, Data (string)
@@ -443,7 +449,10 @@ issuingAuthority: "BRAC University"
   → Offset, Length, Data (string)
 
 signature: 0x7c8d9e0f...
-  → Offset, Length, Data (bytes)
+  → Offset, Length, Data (bytes, admin's signature)
+
+issuer_address: 0x08Bd40C733f6184ed6DEc6c9F67ab05308b5Ed5E
+  → 20 bytes (address, actual user's wallet)
 ```
 
 **3. Combines Into Call Data**
@@ -466,19 +475,21 @@ This is the **transaction data** field.
 
 ```typescript
 const transaction = {
-  to: "0x4261D524bc701dA4AC49339e5F8b299977045eA5", // Contract address
-  data: "0x8f9a3b2c...", // Encoded function call
-  gasLimit: 500000, // Estimated gas (increased for more fields)
+  to: "0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD", // Contract address
+  data: "0x...", // Encoded function call
+  gasLimit: 500000, // Estimated gas
   gasPrice: 0, // Quorum: free gas
-  nonce: 5, // Transaction count from this user's wallet
+  nonce: 42, // Transaction count from ADMIN wallet (not user's wallet)
   chainId: 1337, // Quorum network ID
   value: 0, // Not sending ETH
 };
 ```
 
+**Key change:** Nonce is from **admin wallet**, not user's wallet. Admin signs all transactions.
+
 ### Step 3.4: Sign Transaction (ECDSA)
 
-Ethers.js calls `wallet.signTransaction(transaction)`:
+Ethers.js calls `adminWallet.signTransaction(transaction)`:
 
 **1. Hash Transaction**
 
@@ -486,15 +497,21 @@ Ethers.js calls `wallet.signTransaction(transaction)`:
 RLP-encoded transaction → Keccak256 hash → txHash
 ```
 
-**2. Sign with User's Private Key**
+**2. Sign with Admin's Private Key**
 
 ```
-User's Private Key (decrypted): 0x...
+Admin's Private Key (from .env): 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73
 ECDSA algorithm produces signature components:
   r: 0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
   s: 0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e
   v: 27 (recovery ID)
 ```
+
+**Meta-transaction pattern:**
+
+- Transaction signed by admin wallet (pays gas)
+- But `issuer_address` parameter records actual user
+- Enables user accountability without user managing private keys
 
 **3. Attach Signature to Transaction**
 
@@ -716,42 +733,64 @@ For `tx2` (issueCertificate):
 ```solidity
 function issueCertificate(
     bytes32 cert_hash,                    // 0x4a3f9e2d...
-    string memory certificateNumber,      // "BRAC-CSE-2024-101"
     string memory studentId,              // "20101001"
     string memory studentName,            // "Alice Johnson"
     string memory degree,                 // "BSc Computer Science"
     uint16 cgpa,                          // 385
     string memory issuingAuthority,       // "BRAC University"
-    bytes memory signature                // 0x7c8d9e0f...
+    bytes memory signature,               // 0x7c8d9e0f... (admin's signature)
+    address issuer_address                // 0x08Bd40C733... (actual user's wallet)
 ) external {
-    // Check not duplicate (cert_hash pre-computed by backend)
+    // Check issuer is authorized (queries UserRegistry contract)
+    require(userRegistry.isAuthorized(issuer_address), "Provided issuer is not authorized");
+    // Checks passes ✅
+
+    // Check caller is admin or the issuer
+    require(msg.sender == admin || msg.sender == issuer_address, "Only admin or the issuer can issue certificates");
+    // msg.sender == admin ✅ (admin wallet signed transaction)
+
+    // Check not duplicate
     require(!certificate_exists[cert_hash], "Certificate already exists");
     // Check passes ✅
 
-    // Check CGPA valid (uint16 range)
+    // Check CGPA valid
     require(cgpa <= 400, "Invalid CGPA");
     // 385 <= 400 ✅
+
+    // Get latest version for this student
+    uint256 latest_version = student_to_latest_version[studentId];
+
+    // Check if student has active certificate
+    if (latest_version > 0) {
+        bytes32 active_hash = student_to_active_cert_hash[studentId];
+        require(active_hash == bytes32(0),
+                "Student has an active certificate. Revoke it before creating a new version.");
+    }
+
+    uint256 new_version = latest_version + 1; // Version 1 for first cert
 
     // Store certificate
     certificates[cert_hash] = Certificate({
         cert_hash: cert_hash,
-        certificate_number: "BRAC-CSE-2024-101",
         student_id: "20101001",
+        version: 1,  // Auto-incremented
         student_name: "Alice Johnson",
         degree_program: "BSc Computer Science",
         cgpa: 385,
         issuing_authority: "BRAC University",
-        issuer: msg.sender,  // User's wallet address
-        issuer_name: issuer_names[msg.sender],  // "alice_doe"
+        issuer: issuer_address,  // Actual user's wallet (not admin!)
         is_revoked: false,
-        signature: signature,
+        signature: signature,  // Admin's signature
         issuance_date: block.timestamp
     });
 
     certificate_exists[cert_hash] = true;
+    student_to_latest_version[studentId] = new_version;
+    student_version_to_hash[studentId][new_version] = cert_hash;
+    student_to_active_cert_hash[studentId] = cert_hash;
 
-    // Emit event
-    emit CertificateIssued(cert_hash, msg.sender, block.number);
+    // Emit event with version info
+    emit CertificateIssued(cert_hash, studentId, new_version, issuer_address, block.number);
 }
 ```
 
@@ -760,21 +799,35 @@ function issueCertificate(
 ```
 Storage slot: certificates[cert_hash]
 Before: empty
-After:  Certificate with 12 fields (cert_hash, certificate_number, student_id, etc.)
+After:  Certificate with 11 fields (cert_hash, student_id, version, student_name, etc.)
 
 Storage slot: certificate_exists[cert_hash]
 Before: false
 After:  true
+
+Storage slot: student_to_latest_version[studentId]
+Before: 0
+After:  1
+
+Storage slot: student_version_to_hash[studentId][1]
+Before: bytes32(0)
+After:  cert_hash
+
+Storage slot: student_to_active_cert_hash[studentId]
+Before: bytes32(0)
+After:  cert_hash
 ```
 
-**Gas used**: ~200,000 gas (more fields than before)
+**Gas used**: ~225,000 gas (more mappings for versioning)
 
 **Event emitted**:
 
 ```
 Event: CertificateIssued
   cert_hash: 0x4a3f9e2d... (indexed)
-  issuer: 0x08Bd40C733... (indexed, user's wallet)
+  student_id: "20101001" (indexed)
+  version: 1
+  issuer: 0x08Bd40C733... (indexed, actual user's wallet)
   block_number: 151
 ```
 
@@ -1045,20 +1098,21 @@ Node creates receipt for each transaction:
     transactionIndex: 1, // Second transaction in block
     blockHash: "0x789abc...",
     blockNumber: 151,
-    from: "0x08Bd40C733...", // User's wallet address
-    to: "0x4261D524bc701dA4AC49339e5F8b299977045eA5", // Contract address
-    gasUsed: 200000,
-    cumulativeGasUsed: 250000, // Gas used by tx1 + tx2
+    from: "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73", // ADMIN wallet address (signer)
+    to: "0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD", // Contract address
+    gasUsed: 225000,
+    cumulativeGasUsed: 275000, // Gas used by tx1 + tx2
     contractAddress: null, // Not a contract deployment
     logs: [
         {
-            address: "0x4261D524bc701dA4AC49339e5F8b299977045eA5",
+            address: "0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD",
             topics: [
-                "0x...", // Event signature: CertificateIssued(bytes32,address,uint256)
+                "0x...", // Event signature: CertificateIssued(bytes32,string,uint256,address,uint256)
                 "0x4a3f9e2d...", // cert_hash (indexed)
-                "0x000000000000000000000000008Bd40C733..." // issuer address (indexed)
+                "0x...", // student_id (indexed)
+                "0x000000000000000000000000008Bd40C733..." // issuer address (indexed, ACTUAL USER)
             ],
-            data: "0x...", // Encoded: block_number
+            data: "0x...", // Encoded: version, block_number
             blockNumber: 151,
             transactionHash: "0x3f2a1b9c...",
             logIndex: 0
@@ -1067,6 +1121,10 @@ Node creates receipt for each transaction:
     status: 1, // 1 = success, 0 = reverted
     effectiveGasPrice: 0
 }
+```
+
+**Key observation:** `from` is admin wallet (transaction signer), but event logs record actual user's address as `issuer`.
+
 ```
 
 **Key fields**:
@@ -1080,8 +1138,10 @@ Node creates receipt for each transaction:
 All receipts in block are hashed into **Merkle tree**:
 
 ```
+
 receiptsRoot = MerkleRoot([receipt_tx1, receipt_tx2, receipt_tx3, receipt_tx4])
-```
+
+````
 
 This root is stored in block header, enabling **receipt proofs** (prove transaction was in block without downloading entire block).
 
@@ -1103,7 +1163,7 @@ Remember, backend is still waiting at:
 ```typescript
 const tx = await this.contract.issueCertificate(...);
 const receipt = await tx.wait(); // ← Waiting here
-```
+````
 
 `tx.wait()` internally polls Node 1 (RPC):
 
@@ -1168,8 +1228,8 @@ Backend saves to database:
 
 ```typescript
 const certificate = this.certificatesRepository.create({
-  certificateNumber: "BRAC-CSE-2024-101",
   studentId: "20101001",
+  version: 1, // From blockchain
   studentName: "Alice Johnson",
   cgpa: 3.85,
   degree: "BSc Computer Science",
@@ -1186,8 +1246,8 @@ await this.certificatesRepository.save(certificate);
 
 ```sql
 INSERT INTO certificates (
-    certificate_number,
     student_id,
+    version,
     student_name,
     cgpa,
     degree,
@@ -1198,8 +1258,8 @@ INSERT INTO certificates (
     created_at,
     updated_at
 ) VALUES (
-    'BRAC-CSE-2024-101',
     '20101001',
+    1,
     'Alice Johnson',
     3.85,
     'BSc Computer Science',
@@ -1260,8 +1320,8 @@ return {
   blockNumber: 151,
   certificate: {
     id: 42,
-    certificateNumber: "BRAC-CSE-2024-101",
     studentId: "20101001",
+    version: 1,
     studentName: "Alice Johnson",
     cgpa: 3.85,
     degree: "BSc Computer Science",
@@ -1283,6 +1343,7 @@ Content-Length: 234
     "message": "Certificate issued successfully",
     "transactionHash": "0x3f2a1b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a",
     "blockNumber": 151,
+    "version": 1,
     "certificate": { ... }
 }
 ```
@@ -1304,6 +1365,7 @@ User sees:
 
 ```
 ✅ Certificate Issued Successfully!
+Version: 1
 Transaction Hash: 0x3f2a1b9c...
 Block Number: 151
 ```
@@ -1338,6 +1400,13 @@ Block Number: 151
 | 12. HTTP Response       | Backend → Frontend           | 5-10 ms    | 1222 ms    |
 
 **Total Time**: ~1.2 seconds (1220 ms)
+
+**Key architectural note:** All transactions signed by admin wallet (meta-transactions), but actual user's address recorded on blockchain via `issuer_address` parameter. This enables:
+
+- Users don't need to manage private keys for transactions
+- Admin wallet pays all gas fees
+- Individual accountability maintained (user's address in event logs)
+- UserRegistry contract validates authorization
 
 ### Visualization
 

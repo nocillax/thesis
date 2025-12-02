@@ -190,14 +190,13 @@ Solidity 0.8.0+ includes critical safety features:
 ```solidity
 struct Certificate {
     bytes32 cert_hash;
-    string certificate_number;
     string student_id;
+    uint256 version;
     string student_name;
     string degree_program;
     uint16 cgpa;
     string issuing_authority;
     address issuer;
-    string issuer_name;
     bool is_revoked;
     bytes signature;
     uint256 issuance_date;
@@ -238,31 +237,7 @@ cert_hash VARCHAR(66) PRIMARY KEY  -- "0x" + 64 hex chars
 cert_hash bytes32  -- Fixed 32 bytes, no "0x" prefix
 ```
 
-#### 2. `string certificate_number`
-
-**Type:** `string` = Dynamic-length UTF-8 text
-
-**What it stores:**
-
-```
-"BRAC-CSE-2024-101"
-"CERT-2024-00523"
-"NU/2024/BSc/12345"
-```
-
-**Why string?**
-
-- Human-readable certificate identifiers
-- Variable format across institutions
-- Used for official reference
-
-**Purpose:**
-
-- Official certificate number for institutional records
-- Cross-reference with physical certificates
-- Searchable identifier for verification
-
-#### 3. `string student_id`
+#### 2. `string student_id`
 
 **Type:** `string` = Dynamic-length text
 
@@ -404,7 +379,7 @@ require(cgpa <= 400, "Invalid CGPA");  // Max 4.00
 
 ```
 0x08Bd40C733f6184ed6DEc6c9F67ab05308b5Ed5E  // User's wallet address
-0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73  // Admin wallet (if admin issues)
+0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73  // Admin wallet (when admin signs on behalf of user)
 ```
 
 **What is an address?**
@@ -420,59 +395,33 @@ require(cgpa <= 400, "Invalid CGPA");  // Max 4.00
 
 - **Accountability:** Know which user issued the certificate
 - **Audit trail:** Track which wallet performed action
-- **Individual responsibility:** Each user has their own wallet
-- **Cross-verification:** Can check issuer address against UserRegistry
+- **Individual responsibility:** Links certificate to specific user wallet
+- **Cross-verification:** Can check issuer address against UserRegistry for username/email
 
 **How it's set:**
 
 ```solidity
-issuer: msg.sender
+issuer: issuer_address  // Passed as parameter from backend
 ```
 
-`msg.sender` = Address that called the function (user's wallet, signed by backend)
+**Important:** In your meta-transaction pattern:
 
-#### 9. `string issuer_name`
+- Admin wallet signs the transaction (pays gas)
+- `issuer_address` parameter records the actual user's wallet
+- This enables individual accountability while admin handles gas costs
 
-**Type:** `string` = Dynamic-length UTF-8 text
+**To get issuer's username:**
 
-**What it stores:**
-
-```
-"john_doe"           // Username from backend
-"admin_user"
-"registrar_office"
-```
-
-**Why store this?**
-
-- **Human-readable identifier:** Know who issued without resolving address
-- **Immutable record:** Username stored at issuance time (can't be changed)
-- **Cross-check:** Verify issuer address matches username in UserRegistry
-- **Audit trail:** Easy to see "john_doe issued this certificate"
-
-**How it's populated:**
+Query the UserRegistry contract:
 
 ```solidity
-issuer_name: issuer_names[msg.sender]
+(string memory username, , , , ) = userRegistry.getUser(issuer_address);
 ```
 
-Looks up the username registered for the issuer's wallet address.
+Username is stored in UserRegistry, not duplicated in certificate!
 
-**Security benefit:**
+#### 9. `bool is_revoked`
 
-- Even if database is tampered (username changed)
-- Blockchain has immutable record of original username
-- Can detect discrepancies: "Wallet says john_doe, but database says jane_smith!"
-
-#### 10. `bool is_revoked`
-
-**Type:** `bool` = Boolean, 1 bit (stored as 1 byte)
-
-**What it stores:**
-
-```
-false  // Certificate is valid
-true   // Certificate is revoked
 ```
 
 **Why not delete the certificate?**
@@ -489,50 +438,55 @@ true   // Certificate is revoked
 | Status enum         | `status: ACTIVE/REVOKED/SUSPENDED` | More states                 | More complex          |
 | Separate mapping    | `mapping(bytes32 => bool) revoked` | Cheaper gas for non-revoked | Requires extra lookup |
 
-#### 11. `bytes signature`
+#### 10. `bytes signature`
 
 **Type:** `bytes` = Dynamic-length byte array
 
 **What it stores:**
 
 ```
+
 0x8f3b2a1e9d7c6b5a4e3d2c1b0a9f8e7d6c5b4a3e2d1c0b9a8f7e6d5c4b3a2e1d0c9b8a7f6e5d4c3b2a1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4e3d2c1b
 (65 bytes = ECDSA signature)
+
 ```
 
 **What is a signature?**
 
-- Cryptographic proof that issuer authorized this certificate
-- Created by signing `cert_hash` with issuer's private key
-- Anyone can verify using issuer's public key (derived from address)
+- Cryptographic proof that admin authorized this certificate
+- Created by signing `cert_hash` with admin's private key
+- Anyone can verify using admin's public key (derived from address)
 
 **Signature structure (ECDSA):**
 
 ```
+
 r: 32 bytes (part of signature)
 s: 32 bytes (part of signature)
 v: 1 byte (recovery id)
 Total: 65 bytes
-```
+
+````
 
 **Why store the signature?**
 
-- **Non-repudiation:** Issuer can't deny issuing certificate
+- **Non-repudiation:** Admin can't deny authorizing certificate
 - **Cryptographic proof:** Mathematical certainty of authenticity
-- **Individual accountability:** Each user signs with their own private key
+- **Transaction integrity:** Proves admin wallet approved this specific data
 - **Offline verification:** Can verify without blockchain access
 
 **How it's created (in your backend):**
 
 ```typescript
 const cert_hash = ethers.keccak256(ethers.toUtf8Bytes(data));
-// Backend decrypts user's private key and signs
-const userWallet = await this.getUserWallet(username, walletAddress);
-const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
-// Result: 65-byte signature from user's wallet
-```
+// Admin wallet signs on behalf of user (meta-transaction pattern)
+const signature = await this.adminWallet.signMessage(ethers.getBytes(cert_hash));
+// Result: 65-byte signature from admin's wallet
+````
 
-#### 12. `uint256 issuance_date`
+**Important:** Signature is from admin wallet, but `issuer` field records actual user's address!
+
+#### 11. `uint256 issuance_date`
 
 **Type:** `uint256` = Unsigned integer, 256 bits, range 0 to 2^256-1
 
@@ -693,50 +647,190 @@ require(certificates[cert_hash].issuance_date != 0, "Certificate does not exist"
 - Storing boolean: ~5,000 gas
 - Reading boolean: Free in `view` functions
 
-### 3. Issuer Names Mapping
+### 3. Version Tracking Mappings
+
+The contract has three interconnected mappings for certificate versioning:
+
+#### 3a. Latest Version Tracker
 
 ```solidity
-mapping(address => string) private issuer_names;
+mapping(string => uint256) public student_to_latest_version;
 ```
 
-**Purpose:** Map wallet addresses to usernames (immutable name registry).
+**Purpose:** Track the highest version number for each student.
 
 **Structure:**
 
 ```
-issuer_names:
+student_to_latest_version:
 │
-├─ 0x08Bd40C733... (user wallet)  →  "john_doe"
-├─ 0xFE3B557E... (admin wallet)   →  "System Administrator"
-└─ 0x9876abcd... (another user)   →  "jane_smith"
+├─ "20101001" (student_id)  →  3  (has versions 1, 2, 3)
+├─ "20101002"               →  1  (only version 1)
+└─ "20101003"               →  2  (has versions 1, 2)
 ```
 
 **How it's used:**
 
 ```solidity
-// Register issuer name (called by backend when user issues first certificate)
-function registerIssuer(string memory name) external {
-    require(bytes(name).length > 0, "Name cannot be empty");
-    issuer_names[msg.sender] = name;
-}
+// Get current latest version
+uint256 latest_version = student_to_latest_version[student_id];
 
-// Get issuer name
-function getIssuerName(address issuer) external view returns (string memory) {
-    return issuer_names[issuer];
-}
+// Auto-increment for new certificate
+uint256 new_version = latest_version + 1;  // 1 for first cert, 2 for second, etc.
 
-// Store in certificate
-issuer_name: issuer_names[msg.sender]
+// Update after issuing
+student_to_latest_version[student_id] = new_version;
 ```
+
+**Why public?**
+
+- Anyone can check how many versions a student has
+- Useful for verification: "This is the student's 3rd certificate"
+- Auto-generates getter function
+
+#### 3b. Version-to-Hash Mapping
+
+```solidity
+mapping(string => mapping(uint256 => bytes32)) public student_version_to_hash;
+```
+
+**Purpose:** Map each version number to its certificate hash for a given student.
+
+**Structure:**
+
+```
+student_version_to_hash:
+│
+└─ "20101001" (student_id)
+    ├─ 1 (version)  →  0x7f8a3c2b...  (hash of version 1)
+    ├─ 2 (version)  →  0x1a2b3c4d...  (hash of version 2)
+    └─ 3 (version)  →  0x9e8f7d6c...  (hash of version 3)
+```
+
+**How it's used:**
+
+```solidity
+// Store hash for new version
+student_version_to_hash[student_id][new_version] = cert_hash;
+
+// Retrieve specific version's hash
+bytes32 v2_hash = student_version_to_hash["20101001"][2];
+```
+
+**Use cases:**
+
+- Get hash of student's 2nd certificate
+- Retrieve all versions using `getAllVersions()` function
+- Historical audit: trace certificate evolution
+
+#### 3c. Active Certificate Pointer
+
+```solidity
+mapping(string => bytes32) public student_to_active_cert_hash;
+```
+
+**Purpose:** Track which certificate version is currently active (not revoked) for each student.
+
+**Structure:**
+
+```
+student_to_active_cert_hash:
+│
+├─ "20101001"  →  0x9e8f7d6c...  (version 3 is active, v1 & v2 revoked)
+├─ "20101002"  →  0x7f8a3c2b...  (version 1 is active)
+└─ "20101003"  →  bytes32(0)    (no active cert, all revoked)
+```
+
+**How it's used:**
+
+```solidity
+// Set active when issuing
+student_to_active_cert_hash[student_id] = cert_hash;
+
+// Clear when revoking
+if (student_to_active_cert_hash[cert.student_id] == cert_hash) {
+    student_to_active_cert_hash[cert.student_id] = bytes32(0);
+}
+
+// Check before issuing new version
+require(student_to_active_cert_hash[student_id] == bytes32(0),
+        "Student has active certificate. Revoke it first.");
+```
+
+**Business rules:**
+
+- Only ONE active certificate per student at a time
+- Must revoke current active certificate before issuing new version
+- `bytes32(0)` means no active certificate (all revoked)
+- Used by `getActiveCertificate()` function
+
+**Why this pattern?**
+
+- **Enforces workflow:** Can't have multiple valid certificates simultaneously
+- **Clear status:** Always know which version is "current"
+- **Revocation control:** Prevents certificate duplication
+- **Reactivation logic:** Can reactivate old version if no other active
+
+### 4. UserRegistry Contract Reference
+
+```solidity
+IUserRegistry public userRegistry;
+```
+
+**Type:** Contract interface reference
+
+**Purpose:** Link to UserRegistry contract for authorization and user data.
+
+**What is IUserRegistry?**
+
+Interface defined at top of contract:
+
+```solidity
+interface IUserRegistry {
+    function isAuthorized(address wallet_address) external view returns (bool);
+    function getUser(address wallet_address) external view returns (
+        string memory username,
+        string memory email,
+        uint256 registration_date,
+        bool is_authorized
+    );
+}
+```
+
+**How it's used:**
+
+```solidity
+// Check if wallet is authorized to issue certificates
+require(userRegistry.isAuthorized(issuer_address),
+        "Provided issuer is not authorized");
+
+// Get username for issuer (in backend, not stored in certificate)
+(string memory username, , , , ) = userRegistry.getUser(issuer_address);
+```
+
+**Set during deployment:**
+
+```solidity
+constructor(address _userRegistryAddress) {
+    admin = msg.sender;
+    userRegistry = IUserRegistry(_userRegistryAddress);
+}
+```
+
+**Why separate contract?**
+
+- **Separation of concerns:** User management vs certificate management
+- **Reusability:** Multiple contracts can use same UserRegistry
+- **Upgradability:** Can deploy new UserRegistry without touching CertificateRegistry
+- **Data consistency:** Single source of truth for user data
 
 **Security benefit:**
 
-- **Immutable username:** Stored at issuance time, can't be changed
-- **Cross-verification:** Compare with UserRegistry to detect tampering
-- **Human-readable audit:** Know who issued without address lookup
-- **Accountability:** Each wallet has a registered name
+- Authorization logic centralized in UserRegistry
+- Can revoke user's access in one place (affects all contracts)
+- Username/email stored once, queried when needed (no duplication)
 
-### 4. Admin Address
+### 5. Admin Address
 
 ```solidity
 address public admin;
@@ -819,6 +913,8 @@ Events are **logs** emitted by smart contracts. They're stored in the blockchain
 ```solidity
 event CertificateIssued(
     bytes32 indexed cert_hash,
+    string indexed student_id,
+    uint256 version,
     address indexed issuer,
     uint256 block_number
 );
@@ -836,17 +932,26 @@ event CertificateIssued(
    - Certificate hash
    - `indexed` = Can filter/search by this value
    - Max 3 indexed parameters per event
-2. **`address indexed issuer`:**
-   - Who issued the certificate
+2. **`string indexed student_id`:**
+   - Student's ID number
+   - `indexed` = Can search for all certificates for a specific student
+   - Useful for tracking student's certificate history
+3. **`uint256 version`:**
+   - Version number of this certificate (1, 2, 3...)
+   - **NOT indexed** = Can't filter by this directly, but included in event data
+   - Shows which version was issued
+4. **`address indexed issuer`:**
+   - Who issued the certificate (actual user's wallet address)
    - `indexed` = Can search for all certificates by specific issuer
-3. **`uint256 block_number`:**
+   - Even though admin signs, this records the actual user
+5. **`uint256 block_number`:**
    - Which block it was issued in
    - **NOT indexed** = Can't filter by this, but included in event data
 
 **Emitting the event:**
 
 ```solidity
-emit CertificateIssued(cert_hash, msg.sender, block.number);
+emit CertificateIssued(cert_hash, student_id, new_version, issuer_address, block.number);
 ```
 
 **How your backend queries events:**
@@ -856,8 +961,17 @@ emit CertificateIssued(cert_hash, msg.sender, block.number);
 const filter = contract.filters.CertificateIssued();
 const events = await contract.queryFilter(filter);
 
+// Get all certificates for a specific student
+const studentFilter = contract.filters.CertificateIssued(null, studentId);
+const events = await contract.queryFilter(studentFilter);
+
 // Get certificates issued by specific issuer
-const issuerFilter = contract.filters.CertificateIssued(null, issuerAddress);
+const issuerFilter = contract.filters.CertificateIssued(
+  null,
+  null,
+  null,
+  issuerAddress
+);
 const events = await contract.queryFilter(issuerFilter);
 
 // Get specific certificate
@@ -950,43 +1064,106 @@ All events are permanent and searchable!
 
 ## Modifiers
 
-**Current implementation: NO modifiers!**
+Modifiers are reusable code that run before function execution. Think of them as guards or decorators.
 
-Your contract previously had an `onlyAuthorized` modifier, but it was removed. Authorization is now handled entirely in the backend:
-
-- Backend checks JWT authentication
-- Backend checks user roles (RolesGuard)
-- Backend decides whether to sign transaction with user's wallet
-- Smart contract accepts calls from any address
-
-**Why this design?**
-
-- **Flexibility:** Easier to change authorization logic (no redeployment)
-- **Backend control:** Centralized authorization management
-- **Simplicity:** Smart contract focuses on data storage
-- **Gas savings:** No authorization checks = cheaper transactions
-
-**Common modifier patterns (for reference):**
+### Modifier 1: onlyAdmin
 
 ```solidity
-// Only contract owner
-modifier onlyOwner() {
-    require(msg.sender == owner, "Not owner");
+modifier onlyAdmin() {
+    require(msg.sender == admin, "Only admin can perform this action");
     _;
 }
+```
 
-// Minimum payment required
-modifier costs(uint256 price) {
-    require(msg.value >= price, "Insufficient payment");
+**What it does:**
+
+- Checks if caller (`msg.sender`) is the admin wallet
+- If not, transaction reverts with error message
+- `_;` = Continue executing the function
+
+**Used for:**
+
+- Administrative functions (not currently used in issueCertificate)
+- Potential future functions like transferAdmin, updateUserRegistry
+
+**Why this pattern?**
+
+- Prevents unauthorized admin actions
+- Reusable across multiple functions
+- Clear access control
+
+### Modifier 2: onlyAuthorized
+
+```solidity
+modifier onlyAuthorized() {
+    require(userRegistry.isAuthorized(msg.sender), "Not authorized to issue certificates");
     _;
 }
+```
 
+**What it does:**
+
+- Calls UserRegistry contract to check if wallet is authorized
+- If `userRegistry.isAuthorized(msg.sender)` returns `false`, transaction reverts
+- If `true`, continues execution (`_;`)
+
+**How it works:**
+
+```solidity
+// In UserRegistry contract:
+function isAuthorized(address wallet_address) external view returns (bool) {
+    if (!user_exists[wallet_address]) {
+        return false;
+    }
+    return users[wallet_address].is_authorized;
+}
+```
+
+**Why UserRegistry check?**
+
+- Centralized authorization: One place to manage all authorized users
+- Dynamic: Can revoke/grant access without redeploying CertificateRegistry
+- Separation of concerns: User management separate from certificate logic
+- Cross-contract integration: Shows how contracts interact
+
+**Used in:**
+
+- Functions that require authorization (currently NOT used in issueCertificate)
+- Backend handles authorization, then admin signs transaction
+
+**Important note about your current implementation:**
+
+Your `issueCertificate` function does NOT use `onlyAuthorized` modifier! Instead:
+
+```solidity
+function issueCertificate(..., address issuer_address) external {
+    require(userRegistry.isAuthorized(issuer_address), "Provided issuer is not authorized");
+    require(msg.sender == admin || msg.sender == issuer_address, "Only admin or the issuer can issue certificates");
+    // ... rest of function
+}
+```
+
+**Why inline check instead of modifier?**
+
+- Checks `issuer_address` parameter, not `msg.sender`
+- Meta-transaction pattern: Admin signs, but authorization checks the actual user
+- More flexible: Can check different address than transaction signer
+
+**Other common modifier patterns (for reference):**
+
+```solidity
 // Reentrancy guard
 modifier nonReentrant() {
     require(!locked, "No reentrancy");
     locked = true;
     _;
     locked = false;
+}
+
+// Minimum payment required
+modifier costs(uint256 price) {
+    require(msg.value >= price, "Insufficient payment");
+    _;
 }
 ```
 
@@ -997,16 +1174,18 @@ modifier nonReentrant() {
 The constructor runs **once** when the contract is deployed.
 
 ```solidity
-constructor() {
+constructor(address _userRegistryAddress) {
     admin = msg.sender;
+    userRegistry = IUserRegistry(_userRegistryAddress);
 }
 ```
 
 **Breaking it down:**
 
-**`constructor()`:**
+**`constructor(address _userRegistryAddress)`:**
 
 - Special function, no name needed
+- Takes UserRegistry contract address as parameter
 - Called automatically during deployment
 - Cannot be called again after deployment
 - Doesn't have `public`/`external` visibility (implicitly internal)
@@ -1014,8 +1193,15 @@ constructor() {
 **`admin = msg.sender;`:**
 
 - Sets the admin to whoever deployed the contract
-- In your case: Your backend admin wallet (`0xFE3B557E...`)
-- Currently stored but not used for authorization (authorization in backend)
+- In your case: Your backend admin wallet (`0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73`)
+- Admin signs all transactions (meta-transaction pattern)
+
+**`userRegistry = IUserRegistry(_userRegistryAddress);`:**
+
+- Creates reference to UserRegistry contract
+- Casts address to IUserRegistry interface
+- Enables calling `userRegistry.isAuthorized()` and `userRegistry.getUser()`
+- Links the two contracts together
 
 **Deployment flow:**
 
@@ -1024,48 +1210,52 @@ constructor() {
 2. Hardhat compiles CertificateRegistry.sol → Bytecode
 3. Hardhat creates deployment transaction:
    {
-     from: "0xFE3B557E...",  // Your wallet
-     data: "0x6080604052..."  // Bytecode + constructor params (none in this case)
+     from: "0xFE3B557E...",  // Your admin wallet
+     data: "0x6080604052..."  // Bytecode + constructor params (UserRegistry address encoded)
    }
 4. Transaction is sent to Validator1
 5. Transaction is included in block
 6. EVM executes constructor:
    admin = 0xFE3B557E...
-   authorized_issuers[0xFE3B557E...] = true
-7. Contract is deployed at: 0x42699A7612A82f1d9C36148af9C77354759b210b
+   userRegistry = IUserRegistry(0xECB550dE...)
+7. Contract is deployed at: 0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD
 8. Deployment complete!
 ```
 
-**Constructor with parameters (alternative approach):**
-
-```solidity
-constructor(address _admin, address[] memory _initialIssuers) {
-    admin = _admin;
-    authorized_issuers[_admin] = true;
-
-    for (uint i = 0; i < _initialIssuers.length; i++) {
-        authorized_issuers[_initialIssuers[i]] = true;
-    }
-}
-```
-
-**Deploying with parameters:**
+**Deploying with UserRegistry address:**
 
 ```javascript
+const UserRegistry = await ethers.getContractFactory("UserRegistry");
+const userRegistry = await UserRegistry.deploy();
+await userRegistry.deployed();
+console.log(`UserRegistry deployed at: ${userRegistry.address}`);
+
 const CertificateRegistry = await ethers.getContractFactory(
   "CertificateRegistry"
 );
-const contract = await CertificateRegistry.deploy("0xADMIN_ADDRESS", [
-  "0xISSUER1",
-  "0xISSUER2",
-]);
+const certificateRegistry = await CertificateRegistry.deploy(
+  userRegistry.address // Pass UserRegistry address
+);
+await certificateRegistry.deployed();
+console.log(`CertificateRegistry deployed at: ${certificateRegistry.address}`);
 ```
 
-**Your simpler approach:**
+**Why this approach?**
 
-- No constructor parameters
-- Deployer is automatically admin and authorized
-- Can add more issuers later via `addAuthorizedIssuer()`
+- **Contract composition:** CertificateRegistry uses UserRegistry for authorization
+- **Dependency injection:** UserRegistry address provided at deployment
+- **Flexibility:** Can point to different UserRegistry if needed
+- **Immutable link:** Once deployed, UserRegistry address cannot be changed (unless you add `onlyAdmin` function)
+
+**Alternative (upgradable UserRegistry):**
+
+```solidity
+function setUserRegistry(address _newUserRegistryAddress) external onlyAdmin {
+    userRegistry = IUserRegistry(_newUserRegistryAddress);
+}
+```
+
+Not currently implemented, but would allow switching UserRegistry contracts.
 
 ---
 
@@ -1073,140 +1263,56 @@ const contract = await CertificateRegistry.deploy("0xADMIN_ADDRESS", [
 
 Let's analyze each function in detail.
 
-### Function 1: registerIssuer
-
-```solidity
-function registerIssuer(string memory name) external {
-    require(bytes(name).length > 0, "Name cannot be empty");
-    issuer_names[msg.sender] = name;
-}
-```
-
-**Purpose:** Register a username for the caller's wallet address.
-
-**Breaking it down:**
-
-**`function registerIssuer(...)`:** Function name
-
-**`string memory name`:** Parameter - the username to register
-
-**`external`:** Visibility
-
-- Can be called from outside the contract (via transaction)
-- Cannot be called internally from other contract functions
-- Cheaper gas than `public` (doesn't create internal calling path)
-
-**`require(bytes(name).length > 0, "Name cannot be empty");`:**
-
-- Validation: Name must not be empty
-- `bytes(name).length`: Converts string to bytes and checks length
-- Prevents storing empty usernames
-
-**`issuer_names[msg.sender] = name;`:**
-
-- Maps caller's wallet address to the provided username
-- Once set, this creates an immutable record (though can be overwritten)
-- Used later when issuing certificates
-
-**Usage example:**
-
-```typescript
-// Backend registers user's wallet with their username
-const userWallet = await this.getUserWallet("john_doe", "0x08Bd40C733...");
-const contractWithUserSigner = this.certificateContract.connect(userWallet);
-const tx = await contractWithUserSigner.registerIssuer("john_doe");
-await tx.wait();
-
-// Now when this wallet issues certificates, issuer_name will be "john_doe"
-```
-
-**Gas cost:** ~25,000 gas (writing string to mapping)
-
-**When it's called:**
-
-- Automatically by backend before user's first certificate issuance
-- Checks if name is already registered (getIssuerName)
-- Only registers if name is empty or not set
-
-**Security consideration:**
-
-- **Can be overwritten:** User can call multiple times with different names
-- **No access control:** Any address can register any name
-- **Backend ensures consistency:** Backend only registers once with correct username
-
-### Function 2: getIssuerName
-
-```solidity
-function getIssuerName(address issuer) external view returns (string memory) {
-    return issuer_names[issuer];
-}
-```
-
-**Purpose:** Look up the username for a given wallet address.
-
-**Breaking it down:**
-
-**`external view`:**
-
-- `external`: Can only be called from outside
-- `view`: Read-only, doesn't modify state, FREE to call
-
-**`returns (string memory)`:**
-
-- Returns the username as a string
-- Empty string if address not registered
-
-**Usage example:**
-
-```typescript
-// Check if issuer is registered
-const name = await contract.getIssuerName("0x08Bd40C733...");
-if (name === "") {
-  console.log("Not registered");
-} else {
-  console.log(`Registered as: ${name}`);
-}
-```
-
-**Use cases:**
-
-- Backend checks before issuing certificate
-- Verify username matches database records
-- Display issuer name in certificate verification
-
-### Function 3: issueCertificate
+### Function 1: issueCertificate
 
 This is the **core function** of your contract.
 
 ```solidity
 function issueCertificate(
     bytes32 cert_hash,
-    string memory certificate_number,
     string memory student_id,
     string memory student_name,
     string memory degree_program,
     uint16 cgpa,
     string memory issuing_authority,
-    bytes memory signature
+    bytes memory signature,
+    address issuer_address
 ) external {
+    require(userRegistry.isAuthorized(issuer_address), "Provided issuer is not authorized");
+    require(msg.sender == admin || msg.sender == issuer_address, "Only admin or the issuer can issue certificates");
     require(!certificate_exists[cert_hash], "Certificate already exists");
     require(cgpa <= 400, "Invalid CGPA");
 
+    uint256 latest_version = student_to_latest_version[student_id];
+
+    if (latest_version > 0) {
+        bytes32 active_hash = student_to_active_cert_hash[student_id];
+        require(active_hash == bytes32(0),
+                "Student has an active certificate. Revoke it before creating a new version.");
+    }
+
+    uint256 new_version = latest_version + 1;
+
     certificates[cert_hash] = Certificate({
         cert_hash: cert_hash,
+        student_id: student_id,
+        version: new_version,
         student_name: student_name,
         degree_program: degree_program,
         cgpa: cgpa,
         issuing_authority: issuing_authority,
-        issuer: msg.sender,
+        issuer: issuer_address,
         is_revoked: false,
         signature: signature,
         issuance_date: block.timestamp
     });
 
     certificate_exists[cert_hash] = true;
+    student_to_latest_version[student_id] = new_version;
+    student_version_to_hash[student_id][new_version] = cert_hash;
+    student_to_active_cert_hash[student_id] = cert_hash;
 
-    emit CertificateIssued(cert_hash, msg.sender, block.number);
+    emit CertificateIssued(cert_hash, student_id, new_version, issuer_address, block.number);
 }
 ```
 
@@ -1217,42 +1323,76 @@ function issueCertificate(
    - Pre-computed hash of certificate data
    - Computed by your backend using keccak256
    - Acts as unique identifier
+   - Includes student_id + student_name + degree_program + cgpa + **version** + issuance_date
 
-2. **`string memory certificate_number`:**
-
-   - Official certificate number (e.g., "BRAC-CSE-2024-101")
-   - Institutional reference number
-
-3. **`string memory student_id`:**
+2. **`string memory student_id`:**
 
    - Student's ID number (e.g., "20101001")
    - Links to institutional records
+   - **Key for versioning:** Used to track all certificate versions for this student
 
-4. **`string memory student_name`:**
+3. **`string memory student_name`:**
 
    - Student's name
    - `memory` = Temporary storage (explained later)
 
-5. **`string memory degree_program`:**
+4. **`string memory degree_program`:**
 
    - Degree name (e.g., "Computer Science")
 
-6. **`uint16 cgpa`:**
+5. **`uint16 cgpa`:**
 
    - CGPA × 100 (392 = 3.92)
    - Range: 0-400 (0.00-4.00)
 
-7. **`string memory issuing_authority`:**
+6. **`string memory issuing_authority`:**
 
    - University/institution name
 
-8. **`bytes memory signature`:**
+7. **`bytes memory signature`:**
+
    - ECDSA signature of cert_hash
-   - Signed by user's wallet (proves individual accountability)
+   - Signed by admin wallet (not user wallet!)
+
+8. **`address issuer_address`:**
+   - **NEW PARAMETER:** Actual user's wallet address
+   - Admin signs transaction, but this records who really issued it
+   - Enables meta-transaction pattern
+   - Must be authorized in UserRegistry
 
 **Step-by-step execution:**
 
-**Step 1: Check certificate doesn't already exist**
+**Step 1: Check issuer authorization**
+
+```solidity
+require(userRegistry.isAuthorized(issuer_address), "Provided issuer is not authorized");
+```
+
+**Why this check?**
+
+- Verifies the actual user (not admin!) is authorized to issue certificates
+- Calls UserRegistry contract: `isAuthorized(issuer_address)`
+- If user is revoked or doesn't exist, transaction fails
+- Authorization managed centrally in UserRegistry
+
+**Step 2: Verify caller is admin or issuer**
+
+```solidity
+require(msg.sender == admin || msg.sender == issuer_address, "Only admin or the issuer can issue certificates");
+```
+
+**Why this check?**
+
+- **Meta-transaction support:** Admin can sign on behalf of user (`msg.sender == admin`)
+- **Direct user signing:** User can also sign their own transactions (`msg.sender == issuer_address`)
+- Prevents random wallets from calling with arbitrary `issuer_address`
+
+**In practice:**
+
+- Backend always uses admin wallet, so `msg.sender == admin` is true
+- `issuer_address` is the user's wallet from backend
+
+**Step 3: Check certificate doesn't already exist**
 
 ```solidity
 require(!certificate_exists[cert_hash], "Certificate already exists");
@@ -1261,10 +1401,10 @@ require(!certificate_exists[cert_hash], "Certificate already exists");
 **Why this check?**
 
 - Prevent duplicate certificates
-- `cert_hash` should be unique (derived from student_id + name + ...)
+- `cert_hash` should be unique (includes version in hash calculation)
 - If someone tries to issue same certificate twice, transaction reverts
 
-**Step 2: Validate CGPA range**
+**Step 4: Validate CGPA range**
 
 ```solidity
 require(cgpa <= 400, "Invalid CGPA");
@@ -1276,75 +1416,118 @@ require(cgpa <= 400, "Invalid CGPA");
 - 4.00 × 100 = 400
 - Prevents storing invalid GPAs (e.g., 500 = 5.00)
 
-**Step 3: Store certificate**
+**Step 5: Check version requirements**
+
+```solidity
+uint256 latest_version = student_to_latest_version[student_id];
+
+if (latest_version > 0) {
+    bytes32 active_hash = student_to_active_cert_hash[student_id];
+    require(active_hash == bytes32(0),
+            "Student has an active certificate. Revoke it before creating a new version.");
+}
+
+uint256 new_version = latest_version + 1;
+```
+
+**What's happening:**
+
+1. Get student's latest version number (0 if first certificate)
+2. If student has previous certificates (`latest_version > 0`):
+   - Check if any version is currently active
+   - If active certificate exists, reject (must revoke first)
+3. Calculate new version: `latest_version + 1`
+   - First certificate: 0 + 1 = 1
+   - Second certificate: 1 + 1 = 2
+   - And so on...
+
+**Why this rule?**
+
+- **Business logic:** Student can't have multiple valid certificates simultaneously
+- **Workflow enforcement:** Must explicitly revoke old certificate before issuing new one
+- **Clear status:** Always know which version is "current"
+
+**Step 6: Store certificate**
 
 ```solidity
 certificates[cert_hash] = Certificate({
     cert_hash: cert_hash,
-    certificate_number: certificate_number,
     student_id: student_id,
+    version: new_version,
     student_name: student_name,
     degree_program: degree_program,
     cgpa: cgpa,
     issuing_authority: issuing_authority,
-    issuer: msg.sender,                    // User's wallet address (signed by backend)
-    issuer_name: issuer_names[msg.sender], // Username registered for this wallet
-    is_revoked: false,                     // Default: not revoked
-    signature: signature,                  // Signed by user's private key
-    issuance_date: block.timestamp         // Automatically set to current time
+    issuer: issuer_address,  // User's wallet, not admin!
+    is_revoked: false,
+    signature: signature,  // Admin's signature
+    issuance_date: block.timestamp
 });
 ```
 
-**Note the automatic fields:**
+**Note the important fields:**
 
-- `issuer: msg.sender` - User's wallet address (can't be faked, set by blockchain)
-- `issuer_name: issuer_names[msg.sender]` - Looks up registered username
+- `issuer: issuer_address` - Actual user's wallet (from parameter)
+- `version: new_version` - Auto-incremented version number
 - `is_revoked: false` - Starts as valid
 - `issuance_date: block.timestamp` - Set by block time (trustworthy)
+- `signature: signature` - Admin's signature (admin signs on behalf of user)
 
-**Step 4: Mark certificate as existing**
+**Step 7: Update all versioning mappings**
 
 ```solidity
 certificate_exists[cert_hash] = true;
+student_to_latest_version[student_id] = new_version;
+student_version_to_hash[student_id][new_version] = cert_hash;
+student_to_active_cert_hash[student_id] = cert_hash;
 ```
 
-**Step 5: Emit event**
+**What each does:**
+
+1. `certificate_exists[cert_hash] = true` - Mark certificate as existing
+2. `student_to_latest_version[student_id] = new_version` - Update highest version for student
+3. `student_version_to_hash[student_id][new_version] = cert_hash` - Map version number to hash
+4. `student_to_active_cert_hash[student_id] = cert_hash` - Set this as active certificate
+
+**Step 8: Emit event**
 
 ```solidity
-emit CertificateIssued(cert_hash, msg.sender, block.number);
+emit CertificateIssued(cert_hash, student_id, new_version, issuer_address, block.number);
 ```
 
-Logs this action permanently for audit trail.
+Logs this action permanently for audit trail with version information.
 
 **Gas cost estimation:**
 
 ```
-Existence check:            ~2,100 gas
-CGPA validation:            ~3,000 gas
-Store Certificate struct:   ~180,000 gas (12 fields, includes strings)
-Store boolean:              ~20,000 gas
-Emit event:                 ~1,500 gas
-────────────────────────────────────
-Total:                      ~206,600 gas
+UserRegistry authorization check:  ~3,000 gas
+Caller verification:               ~500 gas
+Existence checks:                  ~4,200 gas
+CGPA validation:                   ~3 gas
+Version checks + calculations:     ~5,000 gas
+Store Certificate struct:          ~150,000 gas (11 fields)
+Update 4 mappings:                 ~60,000 gas
+Emit event:                        ~2,500 gas
+────────────────────────────────────────────
+Total:                             ~225,203 gas
 ```
 
 With `gasPrice = 0` in Quorum: **FREE** (no ETH cost)
 
-### Function 4: verifyCertificate
+### Function 2: verifyCertificate
 
 ```solidity
 function verifyCertificate(bytes32 cert_hash)
     external
     view
     returns (
-        string memory certificate_number,
         string memory student_id,
+        uint256 version,
         string memory student_name,
         string memory degree_program,
         uint16 cgpa,
         string memory issuing_authority,
         address issuer,
-        string memory issuer_name,
         bool is_revoked,
         bytes memory signature,
         uint256 issuance_date
@@ -1354,6 +1537,8 @@ function verifyCertificate(bytes32 cert_hash)
     Certificate memory cert = certificates[cert_hash];
 
     return (
+        cert.student_id,
+        cert.version,
         cert.student_name,
         cert.degree_program,
         cert.cgpa,
@@ -1430,12 +1615,16 @@ Returns tuple of all values.
 ```typescript
 const result = await contract.verifyCertificate(cert_hash);
 
-console.log(`Certificate #: ${result.certificate_number}`);
 console.log(`Student ID: ${result.student_id}`);
+console.log(`Version: ${result.version}`);
 console.log(`Student: ${result.student_name}`);
 console.log(`CGPA: ${result.cgpa / 100}`); // Convert back to decimal
-console.log(`Issuer: ${result.issuer_name} (${result.issuer})`); // Username and wallet
+console.log(`Issuer: ${result.issuer}`);
 console.log(`Revoked: ${result.is_revoked}`);
+
+// Get issuer's username from UserRegistry
+const [username, email] = await userRegistryContract.getUser(result.issuer);
+console.log(`Issued by: ${username} (${email})`);
 ```
 
 **Why `view` functions are free:**
@@ -1464,13 +1653,19 @@ function verifyCertificate(bytes32 cert_hash)
 - Current approach is more compatible
 - Explicit returns are clearer
 
-### Function 5: revokeCertificate
+### Function 3: revokeCertificate
 
 ```solidity
 function revokeCertificate(bytes32 cert_hash) external {
     require(certificate_exists[cert_hash], "Certificate does not exist");
 
-    certificates[cert_hash].is_revoked = true;
+    Certificate storage cert = certificates[cert_hash];
+    cert.is_revoked = true;
+
+    // Clear active pointer if this was the active certificate
+    if (student_to_active_cert_hash[cert.student_id] == cert_hash) {
+        student_to_active_cert_hash[cert.student_id] = bytes32(0);
+    }
 
     emit CertificateRevoked(cert_hash, msg.sender, block.number);
 }
@@ -1494,31 +1689,67 @@ require(certificate_exists[cert_hash], "Certificate does not exist");
 
 Can't revoke a certificate that doesn't exist.
 
-**Note:** Authorization is handled in backend!
+**Note:** No authorization check on blockchain!
 
 - Backend checks JWT token
 - Backend checks user permissions
 - Backend decides whether to call this function
 - Smart contract accepts call from any address (trusts backend)
 
-**Note:** No "Already revoked" check on blockchain!
-
-- Backend checks status before calling
-- If already revoked, backend returns 400 error
-- Smart contract will set `is_revoked = true` even if already true (idempotent)
-
-**Step 2: Set revoked flag**
+**Step 2: Load certificate with storage pointer**
 
 ```solidity
-certificates[cert_hash].is_revoked = true;
+Certificate storage cert = certificates[cert_hash];
+```
+
+**`storage` keyword:**
+
+- Creates a reference to storage location (not a copy)
+- Changes to `cert` directly modify blockchain state
+- More gas-efficient than loading to memory then writing back
+
+**Step 3: Set revoked flag**
+
+```solidity
+cert.is_revoked = true;
 ```
 
 **Important: All other data remains unchanged!**
 
 - Student name still there
 - CGPA still there
-- Signature still there
+- Version still there
 - Only `is_revoked` changes
+
+**Step 4: Clear active certificate pointer**
+
+```solidity
+if (student_to_active_cert_hash[cert.student_id] == cert_hash) {
+    student_to_active_cert_hash[cert.student_id] = bytes32(0);
+}
+```
+
+**Why this check?**
+
+- If this certificate is the active one, clear the active pointer
+- Sets to `bytes32(0)` (empty/null value)
+- Now student has no active certificate
+- Enables issuing new version (versioning rule requires no active cert)
+
+**What if revoking old version?**
+
+- If revoking version 1, but version 2 is active
+- `student_to_active_cert_hash[student_id]` points to version 2's hash
+- Condition is false, active pointer unchanged
+- Version 2 remains active
+
+**Step 5: Emit event**
+
+```solidity
+emit CertificateRevoked(cert_hash, msg.sender, block.number);
+```
+
+Permanent log of revocation action.
 
 **Why not delete the certificate?**
 
@@ -1545,13 +1776,22 @@ console.log(`Revoked: ${result[5]}`); // TRUE
 
 Certificate exists but is marked invalid!
 
-### Function 6: reactivateCertificate
+### Function 4: reactivateCertificate
 
 ```solidity
 function reactivateCertificate(bytes32 cert_hash) external {
     require(certificate_exists[cert_hash], "Certificate does not exist");
 
-    certificates[cert_hash].is_revoked = false;
+    Certificate storage cert = certificates[cert_hash];
+    require(cert.is_revoked, "Certificate is already active");
+
+    // Check if another version is active
+    bytes32 active_hash = student_to_active_cert_hash[cert.student_id];
+    require(active_hash == bytes32(0),
+            "Another version is active. Revoke it first to reactivate this version.");
+
+    cert.is_revoked = false;
+    student_to_active_cert_hash[cert.student_id] = cert_hash;
 
     emit CertificateReactivated(cert_hash, msg.sender, block.number);
 }
@@ -1564,33 +1804,291 @@ function reactivateCertificate(bytes32 cert_hash) external {
 - Revocation was a mistake
 - Legal dispute resolved in student's favor
 - Administrative error correction
+- Want to revert to previous version
 
-**Logic:**
+**Step-by-step:**
 
-- Opposite of revokeCertificate
-- Backend checks certificate IS revoked before calling
-- Smart contract sets `is_revoked = false` (idempotent)
-- Authorization handled in backend (like revoke)
+**Step 1: Check existence**
+
+```solidity
+require(certificate_exists[cert_hash], "Certificate does not exist");
+```
+
+**Step 2: Load certificate and verify it's revoked**
+
+```solidity
+Certificate storage cert = certificates[cert_hash];
+require(cert.is_revoked, "Certificate is already active");
+```
+
+**Why check if revoked?**
+
+- Prevents reactivating an already-active certificate
+- Makes the operation more explicit
+- Returns clear error if trying to reactivate active cert
+
+**Step 3: Check no other version is active**
+
+```solidity
+bytes32 active_hash = student_to_active_cert_hash[cert.student_id];
+require(active_hash == bytes32(0),
+        "Another version is active. Revoke it first to reactivate this version.");
+```
+
+**Why this rule?**
+
+- Enforces "one active certificate per student" policy
+- If student has version 2 active, can't reactivate version 1
+- Must revoke version 2 first, then can reactivate version 1
+- Prevents multiple valid certificates simultaneously
+
+**Example scenario:**
+
+```
+Student has 3 versions:
+- Version 1: Revoked
+- Version 2: Active
+- Version 3: Revoked
+
+Trying to reactivate version 1:
+1. Check: version 1 is revoked ✓
+2. Check: active_hash = version 2's hash (not bytes32(0)) ✗
+3. Error: "Another version is active"
+
+Must first revoke version 2, then can reactivate version 1.
+```
+
+**Step 4: Reactivate certificate**
+
+```solidity
+cert.is_revoked = false;
+student_to_active_cert_hash[cert.student_id] = cert_hash;
+```
+
+- Set `is_revoked` back to `false`
+- Update active certificate pointer to this certificate
+
+**Step 5: Emit event**
+
+```solidity
+emit CertificateReactivated(cert_hash, msg.sender, block.number);
+```
 
 **Complete lifecycle:**
 
 ```
-Issue:       is_revoked = false  ✓ Valid
+Issue v1:    version=1, is_revoked=false, active=v1  ✓ Valid
     ↓
-Revoke:      is_revoked = true   ✗ Invalid
+Revoke v1:   version=1, is_revoked=true,  active=null   ✗ Invalid
     ↓
-Reactivate:  is_revoked = false  ✓ Valid again
+Issue v2:    version=2, is_revoked=false, active=v2  ✓ Valid (v1 still revoked)
+    ↓
+Revoke v2:   version=2, is_revoked=true,  active=null   ✗ Both invalid
+    ↓
+Reactivate v1: version=1, is_revoked=false, active=v1  ✓ Valid again (v2 still revoked)
 ```
 
 **Event trail:**
 
 ```
-Block #500: CertificateIssued
-Block #600: CertificateRevoked
-Block #700: CertificateReactivated
+Block #500: CertificateIssued (v1)
+Block #600: CertificateRevoked (v1)
+Block #650: CertificateIssued (v2)
+Block #700: CertificateRevoked (v2)
+Block #750: CertificateReactivated (v1)
 ```
 
 All events preserved forever - complete audit trail!
+
+### Function 5: getActiveCertificate
+
+```solidity
+function getActiveCertificate(string memory student_id)
+    external
+    view
+    returns (Certificate memory)
+{
+    bytes32 hash = student_to_active_cert_hash[student_id];
+    require(hash != bytes32(0), "No active certificate for this student");
+    return certificates[hash];
+}
+```
+
+**Purpose:** Get the currently active (non-revoked) certificate for a student.
+
+**Breaking it down:**
+
+**`external view`:**
+
+- `external`: Can only be called from outside contract
+- **`view`: Read-only, FREE to call** (no transaction needed)
+
+**`returns (Certificate memory)`:**
+
+- Returns entire Certificate struct
+- Loaded into memory (temporary)
+
+**Step 1: Look up active certificate hash**
+
+```solidity
+bytes32 hash = student_to_active_cert_hash[student_id];
+```
+
+Gets the certificate hash that's currently active for this student.
+
+**Step 2: Check if active certificate exists**
+
+```solidity
+require(hash != bytes32(0), "No active certificate for this student");
+```
+
+**Why check for `bytes32(0)`?**
+
+- `bytes32(0)` = 0x0000000000000000000000000000000000000000000000000000000000000000
+- Represents "no active certificate" (all revoked)
+- Prevents returning empty/default certificate struct
+
+**Step 3: Return certificate**
+
+```solidity
+return certificates[hash];
+```
+
+Looks up and returns the full certificate struct.
+
+**Usage example:**
+
+```typescript
+try {
+  const activeCert = await contract.getActiveCertificate("20101001");
+  console.log(`Active version: ${activeCert.version}`);
+  console.log(`Student: ${activeCert.student_name}`);
+  console.log(`CGPA: ${activeCert.cgpa / 100}`);
+} catch (error) {
+  console.log("No active certificate for this student");
+}
+```
+
+**Use cases:**
+
+- Quick lookup: "Show me student's current valid certificate"
+- Verification: "Is this student's certificate currently valid?"
+- API endpoint: `/certificates/active/:student_id`
+
+### Function 6: getAllVersions
+
+```solidity
+function getAllVersions(string memory student_id)
+    external
+    view
+    returns (bytes32[] memory)
+{
+    uint256 latest = student_to_latest_version[student_id];
+    require(latest > 0, "No certificates found for this student");
+
+    bytes32[] memory hashes = new bytes32[](latest);
+
+    for (uint256 v = 1; v <= latest; v++) {
+        hashes[v-1] = student_version_to_hash[student_id][v];
+    }
+
+    return hashes;
+}
+```
+
+**Purpose:** Get all certificate hashes (all versions) for a student.
+
+**Breaking it down:**
+
+**`returns (bytes32[] memory)`:**
+
+- Returns dynamic array of certificate hashes
+- Array created in memory (temporary)
+
+**Step 1: Get latest version number**
+
+```solidity
+uint256 latest = student_to_latest_version[student_id];
+require(latest > 0, "No certificates found for this student");
+```
+
+- If `latest = 0`: Student has no certificates
+- If `latest = 3`: Student has versions 1, 2, and 3
+
+**Step 2: Create array of correct size**
+
+```solidity
+bytes32[] memory hashes = new bytes32[](latest);
+```
+
+- Creates array with exactly `latest` elements
+- Example: If student has 3 versions, creates array of size 3
+
+**Step 3: Fill array with certificate hashes**
+
+```solidity
+for (uint256 v = 1; v <= latest; v++) {
+    hashes[v-1] = student_version_to_hash[student_id][v];
+}
+```
+
+**What's happening:**
+
+- Loop from version 1 to latest version
+- For each version, look up its hash from `student_version_to_hash` mapping
+- Store in array at index `v-1` (arrays are 0-indexed, versions are 1-indexed)
+
+**Example:**
+
+```
+student_id = "20101001"
+latest = 3
+
+Loop iteration 1: v=1, hashes[0] = student_version_to_hash["20101001"][1]
+Loop iteration 2: v=2, hashes[1] = student_version_to_hash["20101001"][2]
+Loop iteration 3: v=3, hashes[2] = student_version_to_hash["20101001"][3]
+
+Result: [hash_v1, hash_v2, hash_v3]
+```
+
+**Step 4: Return array**
+
+```solidity
+return hashes;
+```
+
+**Usage example:**
+
+```typescript
+const hashes = await contract.getAllVersions("20101001");
+console.log(`Student has ${hashes.length} certificate versions`);
+
+for (let i = 0; i < hashes.length; i++) {
+  const version = i + 1;
+  const hash = hashes[i];
+  const cert = await contract.verifyCertificate(hash);
+
+  console.log(`\nVersion ${version}:`);
+  console.log(`  Hash: ${hash}`);
+  console.log(`  CGPA: ${cert.cgpa / 100}`);
+  console.log(`  Revoked: ${cert.is_revoked}`);
+  console.log(`  Active: ${cert.is_revoked ? "No" : "Yes"}`);
+}
+```
+
+**Use cases:**
+
+- Certificate history: "Show all versions of this student's certificates"
+- Audit trail: "How many times was this certificate reissued?"
+- Comparison: "What changed between version 1 and version 2?"
+- API endpoint: `/certificates/history/:student_id`
+
+**Gas considerations:**
+
+- Array creation in memory: ~3 gas per element
+- Loop iterations: ~2,000 gas per version
+- For 10 versions: ~20,000 gas (still free in view function!)
+- No transaction cost since it's a `view` function
 
 ---
 

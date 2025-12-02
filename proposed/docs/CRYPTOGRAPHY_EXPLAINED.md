@@ -27,14 +27,14 @@ Your certificate system relies on two fundamental cryptographic primitives:
 
 ### 1. Hash Functions (Keccak256)
 
-**Purpose:** Create unique fingerprints of certificate data.
+**Purpose:** Create unique 32-byte fingerprints of certificate data.
 
 **What it solves:**
 
-- **Integrity verification:** Detect any tampering
-- **Unique identification:** Each certificate has unique hash
-- **Efficiency:** Store 32 bytes instead of full certificate data
-- **Privacy:** Hash reveals nothing about original data
+- **Integrity verification:** Detect any tampering with certificate data
+- **Unique identification:** Each certificate has a unique hash
+- **Efficiency:** Store 32 bytes on blockchain instead of full certificate data
+- **Blockchain key:** Hash serves as the primary key for certificate lookup
 
 **Example in your system:**
 
@@ -66,16 +66,19 @@ Change **one character** → Completely different hash!
 **Example in your system:**
 
 ```
-Your backend (private key holder):
-├─ Computes certificate hash
-├─ Signs hash with private key
-└─ Produces 65-byte signature
+Per-User Wallet Architecture:
+├─ Each user (admin, asif, etc.) has their own wallet
+├─ Backend generates wallet during registration
+├─ Private key returned ONCE (user imports to Rabby)
+├─ Backend does NOT store private keys
+├─ User signs in Rabby wallet (via Web3 authentication)
+└─ Certificate records user's wallet as issuer
 
-Anyone with your public address:
-├─ Takes certificate hash
-├─ Takes signature
-├─ Verifies signature matches your address
-└─ Confirms you authorized this certificate
+Anyone can verify:
+├─ Takes certificate hash from blockchain
+├─ Takes signature from blockchain
+├─ Verifies signature matches issuer's wallet address
+└─ Cross-checks with UserRegistry for issuer identity
 ```
 
 **Together they provide:**
@@ -389,6 +392,8 @@ issuance_date: 1700000000;
 "20101001Jane SmithBachelor of Science in Computer Science3.75BRAC-CSE-2024-000421700000000"
 ```
 
+**Note:** CGPA 3.75 is stored as string "3.75" in hash computation, but stored as uint16 (375) on blockchain.
+
 **Step 2: UTF-8 bytes**
 
 ```
@@ -401,11 +406,12 @@ issuance_date: 1700000000;
 "0x3e7b8f2a9c4d1e6f8a5b3c7d2e1f9a8b6c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f"
 ```
 
-**This hash is:**
+**This hash serves as:**
 
-- Unique identifier for this certificate
-- Stored on blockchain as primary key
-- Used for verification
+- Unique identifier for this specific certificate
+- Key for blockchain lookup (certificates[cert_hash])
+- Proof of data integrity (any change = different hash)
+- Input for digital signature
 
 ### Why This Specific Order?
 
@@ -436,54 +442,35 @@ Attacker tries to swap student_id and student_name:
 └─ Hash changes → Tampering detected!
 ```
 
-### Delimiter Consideration
+### Field Order and Concatenation
 
-**Current approach (no delimiters):**
+**Why order matters:**
 
-```javascript
-"ABC123" + "John Doe" = "ABC123John Doe"
-```
-
-**Potential issue (rare):**
+Swapping field positions produces different hashes:
 
 ```javascript
-student_id: "ABC"
-student_name: "123John Doe"
-Result: "ABC123John Doe"
-
-student_id: "ABC123"
-student_name: "John Doe"
-Result: "ABC123John Doe"
-
-SAME CONCATENATION! Collision!
+hash("ABC123" + "John Doe" + "CS" + "3.85")
+≠ hash("John Doe" + "ABC123" + "CS" + "3.85")
 ```
 
-**Solution (with delimiters):**
+This prevents attackers from reordering fields to create fraudulent certificates.
 
-```javascript
-const data = [
-  student_id,
-  student_name,
-  degree_program,
-  cgpa.toString(),
-  certificate_number,
-  issuance_date.toString(),
-].join("|");
+**Collision consideration:**
 
-// Result: "ABC|123John Doe|..." vs "ABC123|John Doe|..." (different)
+Theoretical collision scenario:
+
+```
+student_id: "ABC" + student_name: "123John" → "ABC123John"
+student_id: "ABC123" + student_name: "John" → "ABC123John"
 ```
 
-**In your system:**
+In practice, this is mitigated by:
 
-- `certificate_number` is unique (enforced by backend)
-- Collision is highly unlikely
-- But adding delimiters would be safer
+- Unique `certificate_number` field (strictly enforced)
+- Multiple fields in concatenation
+- Extremely low probability
 
-**Recommended improvement:**
-
-```typescript
-const data = `${student_id}|${student_name}|${degree_program}|${cgpa}|${certificate_number}|${issuance_date}`;
-```
+**Best practice:** Use delimiters (e.g., `|`) to eliminate theoretical collisions, though not critical given current field validation.
 
 ---
 
@@ -686,13 +673,40 @@ Address → Public Key → Private Key  ✗ Impossible
 
 ### ECDSA Signature Process
 
-**Your backend (or user's) private key:**
+**Per-User Wallet Architecture:**
 
-```
-0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63
+Each user receives their private key during registration:
+
+```javascript
+// Backend generates wallet during user registration
+const newWallet = ethers.Wallet.createRandom();
+const walletAddress = newWallet.address;
+const privateKey = newWallet.privateKey;
+
+// Register on UserRegistry contract
+await userRegistry.registerUser(walletAddress, username, email, is_admin);
+
+// Return private key ONCE to admin/user
+return {
+  wallet_address: walletAddress,
+  private_key: privateKey, // ⚠️ ONLY SHOWN ONCE
+  username,
+  email,
+  is_admin,
+  message: "Import private key to Rabby wallet immediately",
+};
+
+// Examples:
+// admin: 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73
+// asif:  0x5e341B101D0C879b18ab456f514A328e363c6C42
 ```
 
-**Note:** In the current architecture, each user has their own private key stored encrypted in the database. The backend decrypts the user's private key to sign transactions on their behalf.
+**Web3 Authentication flow:**
+
+1. User opens Rabby wallet (has imported private key)
+2. Backend sends challenge message to sign
+3. User signs with Rabby wallet
+4. Backend verifies signature and issues JWT
 
 **Signing algorithm:**
 
@@ -845,14 +859,44 @@ const signature = await userWallet.signMessage(ethers.getBytes(cert_hash));
 3. Signs with the **user's private key** (decrypted from database) using ECDSA
 4. Returns 65-byte signature as hex string
 
-**User's wallet (example: admin):**
+**User's wallet signing (via Rabby):**
 
 ```typescript
-// Backend decrypts user's private key from database
-const privateKey = decryptPrivateKey(user.encrypted_private_key);
-const userWallet = new ethers.Wallet(privateKey, this.provider);
-// User's wallet address = "0x08Bd40C733bC5fA1eDD5ae391d2FAC32A42910E2"
+// User signs in Rabby wallet (frontend)
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+const signature = await signer.signMessage(ethers.getBytes(cert_hash));
+
+// Backend receives signature from frontend
+// Verifies signature matches user's registered wallet
+const recoveredAddress = ethers.verifyMessage(
+  ethers.getBytes(cert_hash),
+  signature
+);
+
+if (recoveredAddress !== userWalletFromJWT) {
+  throw new Error("Invalid signature");
+}
+
+// Backend submits to blockchain (admin pays gas)
+const tx = await contract.issueCertificate(
+  cert_hash,
+  student_id,
+  student_name,
+  degree_program,
+  cgpa_as_uint16,
+  issuing_authority,
+  signature,
+  recoveredAddress // User's wallet recorded as issuer
+);
 ```
+
+**Security model:**
+
+- Private keys stored ONLY in user's Rabby wallet
+- Backend never has access to private keys
+- User signs locally in browser via Rabby
+- Admin wallet only pays gas (meta-transaction)
 
 **Signature output:**
 
@@ -905,22 +949,30 @@ const signature = await signCertificate(cert_hash);
 
 **This signature proves:**
 
-- The specific user (e.g., admin at 0x08Bd40C733...) authorized this certificate
-- Hash 0x3e7b8f2a... was signed
-- Cannot be forged without that user's private key
-- Individual accountability (each user signs with their own wallet)
+- The specific user (e.g., admin at 0xFE3B557E...) authorized this certificate
+- Hash 0x3e7b8f2a... was signed by that user's private key
+- Cannot be forged without the user's private key
+- Individual accountability: Each certificate traceable to specific user
+- Cross-verification: UserRegistry confirms wallet → username mapping
 
 **Anyone can verify:**
 
 ```typescript
-// Recover signer address from signature
+// Step 1: Recover signer address from signature
 const recoveredAddress = ethers.verifyMessage(
   ethers.getBytes(cert_hash),
   signature
 );
 
-if (recoveredAddress === "0x08Bd40C733bC5fA1eDD5ae391d2FAC32A42910E2") {
-  console.log("✓ Signature valid! Signed by admin user");
+// Step 2: Verify signature matches certificate's issuer field
+if (recoveredAddress === cert.issuer) {
+  console.log("✓ Signature valid!");
+
+  // Step 3: Cross-check with UserRegistry for issuer identity
+  const user = await userRegistry.getUserByWallet(recoveredAddress);
+  console.log(`Issuer: ${user.username} (${user.email})`);
+  console.log(`Authorized: ${user.is_authorized}`);
+  console.log(`Admin: ${user.is_admin}`);
 } else {
   console.log("✗ Signature invalid or forged");
 }
@@ -942,17 +994,25 @@ Data → Sign data → Huge signature (proportional to data size)
 
 **Benefits of signing hash:**
 
-1. **Fixed size:** Always 65 bytes (efficient)
-2. **Privacy:** Signature doesn't reveal data content
-3. **Efficiency:** Faster to sign 32 bytes than 100+ bytes
+1. **Fixed size:** Always 65 bytes regardless of certificate data size
+2. **Gas efficiency:** Smaller signature = lower blockchain storage cost
+3. **Performance:** Faster to sign 32 bytes than full certificate data
 4. **Standard practice:** How ECDSA is designed to work
+5. **Privacy:** Signature doesn't reveal certificate content (though stored on blockchain anyway)
 
 **Security equivalence:**
 
 ```
-If Hash(Data) is secure (collision-resistant)
-Then Signature(Hash) = Signature(Data) (cryptographically)
+If Hash(Data) is collision-resistant (Keccak256 is)
+Then Signature(Hash) ≡ Signature(Data) (cryptographically equivalent)
 ```
+
+**In your system:**
+
+- Certificate data: ~200 bytes
+- Hash: 32 bytes
+- Signature: 65 bytes
+- Total saved per signature operation: ~100 bytes
 
 ---
 
@@ -1178,36 +1238,42 @@ Signature is bound to specific hash:
 Conclusion: Replay attack prevented
 ```
 
-**Attack 6: Database tampering (per-user wallet architecture)**
+**Attack 6: Stolen Rabby wallet or compromised private key**
 
 **Attempt:**
 
 ```
-Attacker gains database access
-Swaps user A's encrypted private key with user B's key
-Hopes to issue certificates as user B
+Attacker steals user's private key from Rabby wallet
+Or tricks user into revealing private key
+Attacker now can sign as that user
 ```
 
 **Defense:**
 
 ```
 Scenario:
-├─ Admin's wallet: 0x08Bd40C733... (registered on UserRegistry as "admin")
-├─ Asif's wallet: 0x5e341B101... (registered on UserRegistry as "asif")
-└─ Attacker swaps keys in database
+├─ Attacker obtains asif's private key
+├─ Attacker signs fake certificate with asif's key
+└─ Issues fraudulent certificate
 
-Result when admin issues certificate:
+Detection:
 ├─ Certificate shows issuer: 0x5e341B101... (asif's wallet)
-├─ Certificate shows issuer_name: "admin"
-└─ MISMATCH DETECTED!
+├─ UserRegistry confirms: username = "asif"
+├─ Signature is cryptographically valid ✓
+└─ BUT: Activity doesn't match asif's pattern
 
-UserRegistry verification:
-├─ Query: getUserByWallet(0x5e341B101...)
-├─ Returns: username = "asif"
-├─ But certificate says issuer_name = "admin"
-└─ FRAUD EXPOSED!
+Mitigations:
+1. UserRegistry.isAuthorized() check (admin can revoke)
+2. Activity monitoring (unusual certificate volume)
+3. Blockchain audit trail (all actions recorded)
+4. Admin can deauthorize compromised wallet
+5. All past certificates remain valid (selective revocation)
 
-Conclusion: Database tampering is detectable via blockchain cross-check
+Conclusion:
+├─ Compromised key is serious security issue
+├─ BUT: Detectable via activity monitoring
+├─ AND: Revocable via UserRegistry.setAuthorization(wallet, false)
+└─ Blockchain provides complete audit trail for investigation
 ```
 
 ### Best Practices Followed
@@ -1297,23 +1363,31 @@ const signature = await wallet.signMessage(ethers.getBytes(cert_hash));
 // Result: "0x7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e1b"
 ```
 
-**Step 4: Issue to blockchain**
+**Step 4: Issue to blockchain (meta-transaction)**
 
 ```javascript
-const tx = await contractWithUserSigner.issueCertificate(
+// User's wallet signs, but admin wallet submits and pays gas
+const adminWallet = new ethers.Wallet(ADMIN_PRIVATE_KEY, provider);
+const contractWithAdminSigner = contract.connect(adminWallet);
+
+const tx = await contractWithAdminSigner.issueCertificate(
   cert_hash, // 0x4a3f9e2d...
-  "BRAC-CSE-2024-101", // certificate_number
-  "20101001", // student_id
+  "20101001", // student_id (PRIMARY KEY)
   "Ahmed Rahman", // student_name
   "Computer Science", // degree_program
   392, // cgpa * 100 (uint16)
   "BRAC University", // issuing_authority
-  signature // 0x7c8d9e0f...
+  signature, // User's signature (0x7c8d9e0f...)
+  userWallet.address // Actual issuer's wallet address
 );
 
 const receipt = await tx.wait();
 console.log("Certificate issued in block:", receipt.blockNumber);
+console.log("Gas paid by:", adminWallet.address);
+console.log("Actual issuer:", userWallet.address);
 // Output: "Certificate issued in block: 1542"
+// Output: "Gas paid by: 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73"
+// Output: "Actual issuer: 0x5e341B101D0C879b18ab456f514A328e363c6C42"
 ```
 
 **What's stored on blockchain:**
@@ -1321,18 +1395,21 @@ console.log("Certificate issued in block:", receipt.blockNumber);
 ```
 certificates[0x4a3f9e2d...] = {
   cert_hash: 0x4a3f9e2d...,
-  certificate_number: "BRAC-CSE-2024-101",
-  student_id: "20101001",
+  student_id: "20101001",              // PRIMARY KEY for versioning
+  version: 1,                          // v1, v2, v3...
   student_name: "Ahmed Rahman",
   degree_program: "Computer Science",
-  cgpa: 392,  // uint16 (divided by 100 to get 3.92)
+  cgpa: 392,                           // uint16 (divided by 100 = 3.92)
   issuing_authority: "BRAC University",
-  issuer: 0x08Bd40C733...,  // User's wallet address (e.g., admin)
-  issuer_name: "admin",  // Username stored immutably
+  issuer: 0x5e341B101...,              // User's wallet (e.g., asif)
+  issuer_name: "asif",                 // Username (for convenience)
   is_revoked: false,
-  signature: 0x7c8d9e0f...,
-  issuance_date: 1700000000  // block.timestamp
+  signature: 0x7c8d9e0f...,            // Signed by issuer's wallet
+  issuance_date: 1700000000            // block.timestamp
 }
+
+student_to_active_cert_hash["20101001"] = 0x4a3f9e2d...  // Only one active per student
+student_to_latest_version["20101001"] = 1                // Version counter
 ```
 
 ### Example 2: Verification by Employer
@@ -1385,18 +1462,39 @@ console.log("Match:", recoveredAddress === cert.issuer);
 **Output:**
 
 ```
-Signer: 0x08Bd40C733bC5fA1eDD5ae391d2FAC32A42910E2
-Expected: 0x08Bd40C733bC5fA1eDD5ae391d2FAC32A42910E2
+Signer: 0x5e341B101D0C879b18ab456f514A328e363c6C42
+Expected: 0x5e341B101D0C879b18ab456f514A328e363c6C42
 Match: true ✓
+```
+
+**Step 3: Cross-check with UserRegistry**
+
+```javascript
+const issuerInfo = await userRegistry.getUserByWallet(cert.issuer);
+console.log("Issuer username:", issuerInfo.username);
+console.log("Issuer email:", issuerInfo.email);
+console.log("Is authorized:", issuerInfo.is_authorized);
+console.log("Is admin:", issuerInfo.is_admin);
+```
+
+**Output:**
+
+```
+Issuer username: asif
+Issuer email: asif@university.edu
+Is authorized: true
+Is admin: false
 ```
 
 **Conclusion:**
 
 ```
-✓ Certificate exists on blockchain
-✓ Issued by admin user's wallet (0x08Bd40C733...)
+✓ Certificate exists on blockchain (hash found)
+✓ Not revoked (is_revoked = false)
+✓ Latest version for student (v1 active)
 ✓ Signature is valid (cryptographically verified)
-✓ Not revoked
+✓ Issuer: asif (0x5e341B101...)
+✓ Issuer is authorized (UserRegistry confirms)
 ✓ Student: Ahmed Rahman, CGPA: 3.92
 → CERTIFICATE IS AUTHENTIC
 ```
@@ -1489,15 +1587,23 @@ if (recomputed !== "0x4a3f9e2d...") {
 
 **2. ECDSA Digital Signature:**
 
-- **Input:** Certificate hash + Private key
+- **Input:** Certificate hash + User's private key
 - **Output:** 65-byte signature (r, s, v)
 - **Properties:** Unforgeable, verifiable, non-repudiable
-- **Purpose:** Prove authorization, authenticity
+- **Purpose:** Prove which specific user authorized this certificate
+
+**Per-User Accountability:**
+
+- Each user has unique wallet address
+- UserRegistry maps wallet → (username, email, is_authorized, is_admin)
+- Certificate records issuer's wallet address
+- Cross-verification prevents impersonation
 
 **Together:**
 
 ```
-Hash (What) + Signature (Who) = Tamper-proof Certificate
+Hash (What) + Signature (Who) + UserRegistry (Identity) =
+Tamper-proof + Authenticated + Accountable Certificate
 ```
 
 **Security guarantees:**
@@ -1512,12 +1618,17 @@ Hash (What) + Signature (Who) = Tamper-proof Certificate
 
 When explaining to supervisor:
 
-1. Show hash computation with example
-2. Demonstrate how tiny change produces different hash
-3. Explain signature as "mathematical lock" only you can create
-4. Show verification process (anyone can verify)
-5. Demonstrate tampering detection with live example
-6. Discuss why keccak256 and ECDSA (Ethereum standards)
+1. **Hash computation:** Show how certificate data → keccak256 → 32-byte hash
+2. **Avalanche effect:** Demonstrate tiny change (CGPA 3.92 → 3.93) = completely different hash
+3. **Per-user wallets:** Each user has unique wallet, private key in Rabby wallet (not backend)
+4. **Web3 authentication:** User signs challenge in Rabby, backend verifies signature
+5. **Digital signatures:** User signs certificate hash in Rabby wallet
+6. **Meta-transactions:** Admin wallet pays gas, user's wallet recorded as issuer
+7. **Verification:** Anyone can verify signature + cross-check UserRegistry
+8. **Tampering detection:** Live demo showing modified data rejected
+9. **Ethereum standards:** Why keccak256 and ECDSA (native support, efficiency, security)
+10. **Certificate versioning:** How student_id tracks v1, v2, v3... certificates
+11. **Security model:** Private keys never leave user's Rabby wallet (browser-based signing)
 
 **You now understand the cryptographic foundations of your blockchain system!**
 

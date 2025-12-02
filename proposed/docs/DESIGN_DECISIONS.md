@@ -9,18 +9,23 @@ This document explains **why** specific technologies and architectural patterns 
 ## Table of Contents
 
 1. [Why Blockchain for Certificates?](#1-why-blockchain-for-certificates)
-2. [Why Quorum Instead of Ethereum?](#2-why-quorum-instead-of-ethereum)
-3. [Why IBFT Consensus?](#3-why-ibft-consensus)
-4. [Why 4 Validator Nodes?](#4-why-4-validator-nodes)
-5. [Why Docker Compose?](#5-why-docker-compose)
-6. [Why Solidity Smart Contracts?](#6-why-solidity-smart-contracts)
-7. [Why Keccak256 Hashing?](#7-why-keccak256-hashing)
-8. [Why ECDSA Signatures?](#8-why-ecdsa-signatures)
-9. [Why Scale CGPA by 100?](#9-why-scale-cgpa-by-100)
-10. [Why uint16 Not uint8 for CGPA?](#10-why-uint16-not-uint8-for-cgpa)
-11. [Why Ethers.js v6?](#11-why-ethersjs-v6)
-12. [Why NestJS Backend?](#12-why-nestjs-backend)
-13. [Architecture Trade-offs Summary](#13-architecture-trade-offs-summary)
+2. [Why No Database?](#2-why-no-database)
+3. [Why Quorum Instead of Ethereum?](#3-why-quorum-instead-of-ethereum)
+4. [Why IBFT Consensus?](#4-why-ibft-consensus)
+5. [Why 4 Validator Nodes?](#5-why-4-validator-nodes)
+6. [Why Docker Compose?](#6-why-docker-compose)
+7. [Why Solidity Smart Contracts?](#7-why-solidity-smart-contracts)
+8. [Why Keccak256 Hashing?](#8-why-keccak256-hashing)
+9. [Why ECDSA Signatures?](#9-why-ecdsa-signatures)
+10. [Why Scale CGPA by 100?](#10-why-scale-cgpa-by-100)
+11. [Why uint16 Not uint8 for CGPA?](#11-why-uint16-not-uint8-for-cgpa)
+12. [Why Ethers.js v6?](#12-why-ethersjs-v6)
+13. [Why NestJS Backend?](#13-why-nestjs-backend)
+14. [Why Web3 Wallet Authentication?](#14-why-web3-wallet-authentication)
+15. [Why Admin Signs Instead of Users?](#15-why-admin-signs-instead-of-users)
+16. [Why UserRegistry Contract?](#16-why-userregistry-contract)
+17. [Why Certificate Versioning by student_id?](#17-why-certificate-versioning-by-student_id)
+18. [Architecture Trade-offs Summary](#18-architecture-trade-offs-summary)
 
 ---
 
@@ -70,7 +75,183 @@ Anyone can later verify Alice's certificate without contacting your university's
 
 ---
 
-## 2. Why Quorum Instead of Ethereum?
+## 2. Why No Database?
+
+### The Question
+
+Most applications use a database (PostgreSQL, MongoDB, MySQL) to store data. Why does your system store everything on blockchain instead?
+
+### Traditional Hybrid Approach
+
+**Typical blockchain + database architecture:**
+
+```
+Blockchain: Store certificate hash only
+Database:   Store all certificate data (name, CGPA, degree, etc.)
+```
+
+**Example:**
+
+```solidity
+mapping(bytes32 => bool) public certificateExists;  // Only hash
+```
+
+```sql
+CREATE TABLE certificates (
+  id SERIAL PRIMARY KEY,
+  student_name TEXT,
+  cgpa DECIMAL,
+  degree TEXT,
+  cert_hash BYTEA
+);
+```
+
+**Problems with hybrid:**
+
+- ❌ Database can still be tampered with
+- ❌ Split architecture (two systems to maintain)
+- ❌ Blockchain provides no value if data is off-chain
+- ❌ Verification requires database access
+
+### Your 100% Blockchain Approach
+
+**All data on blockchain:**
+
+```solidity
+struct Certificate {
+    bytes32 cert_hash;
+    string student_id;        // Full data
+    uint256 version;
+    string student_name;      // Full data
+    string degree_program;    // Full data
+    uint16 cgpa;              // Full data
+    string issuing_authority;
+    address issuer;
+    bool is_revoked;
+    bytes signature;
+    uint256 issuance_date;
+}
+
+mapping(bytes32 => Certificate) private certificates;
+```
+
+**Plus UserRegistry for user management:**
+
+```solidity
+struct User {
+    address wallet_address;
+    string username;
+    string email;
+    uint256 registration_date;
+    bool is_authorized;
+    bool is_admin;
+}
+
+mapping(address => User) private users;
+```
+
+### Why This Works
+
+**1. True Immutability**
+
+- ALL data is blockchain-protected
+- No database admin can modify student names or CGPA
+- Certificate details cannot be changed after issuance
+
+**2. Complete Decentralization**
+
+- No dependency on centralized database server
+- Anyone can verify certificates by querying blockchain
+- Works even if backend server is offline
+
+**3. Simpler Architecture**
+
+```
+Traditional:
+Backend ↔ Database ↔ Blockchain
+(3 components)
+
+Yours:
+Backend ↔ Blockchain
+(2 components)
+```
+
+**4. Automatic Replication**
+
+- 4 validator nodes each have complete data
+- No need for database backups/replication
+- Built-in disaster recovery
+
+**5. Direct Verification**
+
+```typescript
+// Anyone can verify without backend:
+const cert = await contract.verifyCertificate(cert_hash);
+console.log(cert.student_name); // Direct from blockchain
+console.log(cert.cgpa / 100); // 385 / 100 = 3.85
+```
+
+### Trade-offs
+
+**Storage cost:**
+
+- Blockchain storage more expensive than database
+- But with private Quorum network (gas = 0), cost is only infrastructure
+- 4 nodes × storage space vs 1 database server
+
+**Query performance:**
+
+- Database: Sub-millisecond queries with indexes
+- Blockchain: ~100ms RPC call latency
+- Acceptable trade-off for certificate use case (not queried frequently)
+
+**Data size limits:**
+
+- Blockchain has block gas limit
+- Your certificates: ~500 bytes each
+- Well within limits (1 block can hold hundreds of certificates)
+
+### What Backend Does Without Database
+
+**Backend role:**
+
+1. **Authentication:** Verify wallet signatures, issue JWT tokens
+2. **Business logic:** Compute certificate hashes, validate inputs
+3. **Blockchain interaction:** Call smart contract functions via ethers.js
+4. **API:** Expose REST endpoints for frontend
+
+**No database needed because:**
+
+- User data → UserRegistry contract
+- Certificate data → CertificateRegistry contract
+- Session data → JWT tokens (stateless)
+
+**Backend code:**
+
+```typescript
+// No TypeORM, no PostgreSQL, no database imports
+import { ethers } from 'ethers';
+
+// Direct blockchain calls:
+const tx = await this.certificateContract.issueCertificate(...);
+const cert = await this.certificateContract.verifyCertificate(cert_hash);
+const user = await this.userRegistryContract.getUser(wallet_address);
+```
+
+### Why This is Impressive for Thesis
+
+**Demonstrates understanding of:**
+
+- Blockchain's true potential (not just hash storage)
+- Architectural simplification
+- Trade-off analysis (performance vs immutability)
+- Smart contract design patterns
+
+**Differentiator:** Most student projects use hybrid approach. Yours is pure blockchain.
+
+---
+
+## 3. Why Quorum Instead of Ethereum?
 
 ### Ethereum Characteristics
 
@@ -134,7 +315,7 @@ You lose Ethereum's massive decentralization (thousands of independent nodes). B
 
 ---
 
-## 3. Why IBFT Consensus?
+## 4. Why IBFT Consensus?
 
 ### Consensus Options in Quorum
 
@@ -240,7 +421,7 @@ When you issue a certificate:
 
 ---
 
-## 4. Why 4 Validator Nodes?
+## 5. Why 4 Validator Nodes?
 
 ### Byzantine Fault Tolerance Formula
 
@@ -353,7 +534,7 @@ With IBFT's Byzantine tolerance:
 
 ---
 
-## 5. Why Docker Compose?
+## 6. Why Docker Compose?
 
 ### Alternatives Considered
 
@@ -463,7 +644,7 @@ For large-scale production:
 
 ---
 
-## 6. Why Solidity Smart Contracts?
+## 7. Why Solidity Smart Contracts?
 
 ### Quorum's Contract Language Options
 
@@ -511,9 +692,9 @@ Catches errors at compile time, not runtime.
 
 ### Alternative: Traditional Database
 
-Why not just use PostgreSQL with append-only log?
+Why not just use PostgreSQL?
 
-**Database Approach**:
+**Database Approach** (control system):
 
 ```sql
 CREATE TABLE certificates (
@@ -526,27 +707,45 @@ CREATE TABLE certificates (
 
 **Problems**:
 
-- ❌ Database admin has root access (can modify)
+- ❌ Database admin has root access (can modify records)
 - ❌ Requires trusting centralized authority
 - ❌ Backup/replication is separate concern
-- ❌ Verification requires API (single point of failure)
+- ❌ Verification requires database access
+- ❌ No cryptographic guarantees
 
-**Blockchain Approach**:
+**Blockchain Approach** (your proposed system):
 
 ```solidity
-mapping(bytes32 => Certificate) public certificates;
+struct Certificate {
+    bytes32 cert_hash;
+    string student_id;
+    uint256 version;
+    string student_name;
+    string degree_program;
+    uint16 cgpa;
+    string issuing_authority;
+    address issuer;
+    bool is_revoked;
+    bytes signature;
+    uint256 issuance_date;
+}
+
+mapping(bytes32 => Certificate) private certificates;
+mapping(string => bytes32) public student_to_active_cert_hash;
 ```
 
 **Benefits**:
 
 - ✅ Cryptographically tamper-proof
-- ✅ Decentralized verification
-- ✅ Built-in replication (4 nodes)
-- ✅ Anyone can verify without API access
+- ✅ Decentralized verification (anyone can query blockchain)
+- ✅ Built-in replication (4 validator nodes)
+- ✅ No database server needed
+- ✅ Certificate versioning per student
+- ✅ Complete audit trail via events
 
 ---
 
-## 7. Why Keccak256 Hashing?
+## 8. Why Keccak256 Hashing?
 
 ### Hash Function Requirements
 
@@ -701,21 +900,38 @@ Advantage:
 - Lower network bandwidth
 
 **3. Transaction Signing**
+
 When backend issues certificate:
 
 ```typescript
-const wallet = new ethers.Wallet(privateKey, provider);
-const tx = await contract.issueCertificate(...);
+// Admin wallet signs the certificate hash
+const signature = await this.adminWallet.signMessage(
+  ethers.getBytes(cert_hash)
+);
+
+// Admin wallet submits transaction
+const tx = await this.certificateContract.issueCertificate(
+  cert_hash,
+  student_id,
+  student_name,
+  degree_program,
+  cgpa_scaled,
+  issuing_authority,
+  signature,
+  issuer_wallet_address // Actual issuer recorded (can be different user)
+);
 ```
 
 Ethers.js automatically:
 
 1. Creates transaction object
-2. Signs with ECDSA private key
+2. Signs with ECDSA private key (admin's)
 3. Produces signature (r, s, v components)
 4. Sends to network
 
 Validators verify signature using ECDSA public key recovery.
+
+**Note:** In your current implementation, admin wallet signs certificates but records the actual issuer's wallet address. This allows the admin to pay gas while maintaining accountability to specific users.
 
 **4. Built-in Verification**
 Quorum validators automatically:
@@ -757,7 +973,7 @@ Address = keccak256(PublicKey)[last 20 bytes]
 
 ---
 
-## 9. Why Scale CGPA by 100?
+## 10. Why Scale CGPA by 100?
 
 ### The Problem: Solidity Has No Decimals
 
@@ -883,7 +1099,7 @@ Problems:
 
 ---
 
-## 10. Why uint16 Not uint8 for CGPA?
+## 11. Why uint16 Not uint8 for CGPA?
 
 ### The Bug Story
 
@@ -1014,7 +1230,7 @@ Using smallest necessary types **saves gas** through slot packing.
 
 ---
 
-## 11. Why Ethers.js v6?
+## 12. Why Ethers.js v6?
 
 ### Backend-to-Blockchain Communication Options
 
@@ -1158,7 +1374,7 @@ Your project uses v6, which added:
 
 ---
 
-## 12. Why NestJS Backend?
+## 13. Why NestJS Backend?
 
 ### Backend Framework Options
 
@@ -1266,11 +1482,17 @@ Seamless PostgreSQL integration with decorators.
 
 ```typescript
 const moduleRef = await Test.createTestingModule({
-  providers: [CertificatesService, MockBlockchainService],
+  providers: [
+    CertificatesService,
+    {
+      provide: BlockchainService,
+      useValue: mockBlockchainService, // Mock blockchain calls
+    },
+  ],
 }).compile();
 ```
 
-Built-in testing utilities, easy to mock dependencies.
+Built-in testing utilities, easy to mock blockchain dependencies.
 
 ### Why Not Simpler Framework?
 
@@ -1291,7 +1513,732 @@ Better for academic evaluation.
 
 ---
 
-## 13. Architecture Trade-offs Summary
+## 14. Why Web3 Wallet Authentication?
+
+### Traditional Authentication Problem
+
+**Username/Password approach:**
+
+```typescript
+@Post('login')
+async login(@Body() { username, password }) {
+  const user = await db.users.findOne({ username });
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) throw new UnauthorizedException();
+  return { token: jwt.sign({ userId: user.id }) };
+}
+```
+
+**Problems:**
+
+- ❌ Passwords can be forgotten
+- ❌ Passwords can be stolen (phishing, keyloggers)
+- ❌ Need password reset mechanism
+- ❌ Need to hash and store passwords securely
+- ❌ Centralized authentication (database required)
+
+### Web3 Wallet Authentication
+
+**Your implementation:**
+
+```typescript
+@Post('wallet-login')
+async walletLogin(@Body() { walletAddress, signature, message }) {
+  // Verify signature cryptographically
+  const recoveredAddress = ethers.verifyMessage(message, signature);
+
+  if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new UnauthorizedException('Invalid signature');
+  }
+
+  // Query UserRegistry contract for user details
+  const user = await this.userRegistryContract.getUser(walletAddress);
+
+  // Generate JWT with user info
+  return this.authService.generateToken(
+    walletAddress,
+    user.username,
+    user.is_admin
+  );
+}
+```
+
+### How It Works
+
+**Step 1: Frontend requests challenge**
+
+```typescript
+const response = await fetch("/auth/challenge");
+const { message } = await response.json();
+// message: "Sign this message to prove you own this wallet: 1732579200"
+```
+
+**Step 2: User signs with Rabby wallet**
+
+```typescript
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+const signature = await signer.signMessage(message);
+```
+
+**Step 3: Backend verifies signature**
+
+```typescript
+const recoveredAddress = ethers.verifyMessage(message, signature);
+// If signature is valid, recovered address matches user's wallet
+```
+
+**Step 4: Backend issues JWT**
+
+```typescript
+const payload = {
+  walletAddress: "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73",
+  username: "admin",
+  isAdmin: true,
+};
+const token = this.jwtService.sign(payload, { expiresIn: "7d" });
+```
+
+### Benefits
+
+**1. No Password Storage**
+
+- No password hashes in database (because no database!)
+- No password reset flows needed
+- No bcrypt or password validation libraries
+
+**2. Cryptographic Proof**
+
+- User proves wallet ownership via ECDSA signature
+- Impossible to fake signature without private key
+- Private key never leaves user's Rabby wallet
+
+**3. Decentralized Identity**
+
+- Wallet address is universal identifier
+- Works across any blockchain application
+- User controls identity (not your backend)
+
+**4. Integration with Blockchain**
+
+- Same wallet used for authentication and blockchain transactions
+- User's wallet address recorded on certificates as issuer
+- Seamless flow: Login → Issue Certificate
+
+**5. Better UX for Crypto Users**
+
+- No remembering passwords
+- One-click login with Rabby
+- Familiar flow for blockchain users
+
+### Security
+
+**Challenge-response pattern:**
+
+```typescript
+// Backend generates unique challenge (includes timestamp)
+const message = `Sign this message to prove you own this wallet: ${Date.now()}`;
+
+// User signs challenge
+const signature = await signer.signMessage(message);
+
+// Backend verifies signature is fresh (timestamp within 5 minutes)
+const timestamp = parseInt(message.split(": ")[1]);
+if (Date.now() - timestamp > 300000) {
+  throw new UnauthorizedException("Challenge expired");
+}
+```
+
+Prevents replay attacks (old signatures cannot be reused).
+
+### Why This is Perfect for Your System
+
+**Consistency:**
+
+- Everything blockchain-based (no hybrid auth)
+- UserRegistry contract = source of truth for users
+- No database = no password storage needed
+
+**Thesis value:**
+
+- Demonstrates understanding of Web3 authentication
+- Shows integration of blockchain beyond just data storage
+- Modern approach (used by OpenSea, Uniswap, etc.)
+
+---
+
+## 15. Why Admin Signs Instead of Users?
+
+### The Question
+
+If each user has their own wallet, why does the admin wallet sign transactions instead of users signing directly?
+
+### Current Implementation
+
+```typescript
+// Admin wallet signs
+const signature = await this.adminWallet.signMessage(
+  ethers.getBytes(cert_hash)
+);
+
+// Admin wallet submits and pays gas
+const tx = await this.certificateContract.issueCertificate(
+  cert_hash,
+  student_id,
+  student_name,
+  degree_program,
+  cgpa_scaled,
+  issuing_authority,
+  signature,
+  issuer_wallet_address // Actual issuer recorded
+);
+```
+
+### Why Admin Signs
+
+**1. Gas Payment**
+
+Quorum transactions require gas (even though gasPrice = 0):
+
+- Admin wallet pre-funded with ETH
+- Users don't need any ETH in their wallets
+- Simplifies onboarding (no need to transfer ETH to new users)
+
+**Without admin signing:**
+
+```typescript
+// Each user would need:
+// 1. ETH in their wallet for gas
+// 2. To sign transaction themselves in frontend
+// 3. To wait for transaction confirmation
+```
+
+**With admin signing:**
+
+```typescript
+// User just needs:
+// 1. Valid JWT token (from Web3 login)
+// 2. To call API endpoint
+// Backend handles all blockchain interaction
+```
+
+**2. Simplified Frontend**
+
+**User-signed approach would require:**
+
+```typescript
+// Frontend code (complex):
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+const contract = new ethers.Contract(address, abi, signer);
+
+// User must approve transaction in Rabby
+const tx = await contract.issueCertificate(...);
+await tx.wait();  // User waits for confirmation
+```
+
+**Current approach:**
+
+```typescript
+// Frontend code (simple):
+const response = await fetch("/certificates/issue", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${jwt_token}` },
+  body: JSON.stringify(certificateData),
+});
+// Backend handles everything
+```
+
+**3. Accountability Still Maintained**
+
+Smart contract records actual issuer:
+
+```solidity
+function issueCertificate(
+    bytes32 cert_hash,
+    string memory student_id,
+    // ...
+    address issuer_address  // Actual issuer (not msg.sender)
+) external {
+    require(userRegistry.isAuthorized(issuer_address),
+            "Provided issuer is not authorized");
+    require(msg.sender == admin || msg.sender == issuer_address,
+            "Only admin or the issuer can issue certificates");
+
+    certificates[cert_hash] = Certificate({
+        // ...
+        issuer: issuer_address,  // Recorded issuer (user's wallet)
+        // ...
+    });
+}
+```
+
+**Result:**
+
+- `msg.sender` = Admin wallet (pays gas)
+- `issuer` field = User's wallet (actual issuer)
+- UserRegistry cross-verification ensures integrity
+
+**4. Future Flexibility**
+
+Comment in code indicates this can change:
+
+```typescript
+// Backend signs with admin wallet (can be updated to accept user signatures in future)
+const signature = await this.adminWallet.signMessage(...);
+```
+
+Could implement user-signed certificates later without changing contract:
+
+- Frontend: User signs in Rabby
+- Backend: Receives signature, validates, submits
+- Contract: Already accepts `issuer_address` parameter
+
+### Trade-off Analysis
+
+**Current approach (admin signs):**
+
+- ✅ Simple user experience
+- ✅ No gas management for users
+- ✅ Clean API-based interface
+- ✅ Accountability maintained via issuer_address
+- ❌ Backend must securely store admin private key
+- ❌ Admin key compromise affects all operations
+
+**Alternative (users sign):**
+
+- ✅ Users directly control their signatures
+- ✅ No admin key management needed
+- ❌ Complex frontend (wallet integration)
+- ❌ Users need ETH for gas
+- ❌ More steps for certificate issuance
+
+**For academic/enterprise use case:** Current approach is optimal. Users are staff members, not end users, so simplified workflow more important than full decentralization.
+
+---
+
+## 16. Why UserRegistry Contract?
+
+### The Problem
+
+How do you manage users (admins, authorized issuers) in a no-database system?
+
+### Option 1: Hardcoded Addresses (Bad)
+
+```solidity
+address constant ADMIN = 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73;
+address constant USER1 = 0x5e341B101D0C879b18ab456f514A328e363c6C42;
+
+function issueCertificate(...) external {
+    require(msg.sender == ADMIN || msg.sender == USER1, "Not authorized");
+    // ...
+}
+```
+
+**Problems:**
+
+- ❌ Cannot add new users without redeploying contract
+- ❌ No user metadata (username, email)
+- ❌ Cannot revoke access dynamically
+
+### Option 2: Database (Contradicts Architecture)
+
+```sql
+CREATE TABLE users (
+    wallet_address TEXT PRIMARY KEY,
+    username TEXT,
+    is_authorized BOOLEAN
+);
+```
+
+**Problems:**
+
+- ❌ Requires database (defeats purpose of 100% blockchain)
+- ❌ Database can be tampered with
+- ❌ Authorization still centralized
+
+### Option 3: UserRegistry Contract (Your Choice) ✅
+
+```solidity
+contract UserRegistry {
+    struct User {
+        address wallet_address;
+        string username;
+        string email;
+        uint256 registration_date;
+        bool is_authorized;
+        bool is_admin;
+    }
+
+    mapping(address => User) private users;
+    mapping(string => address) private email_to_wallet;
+
+    function registerUser(
+        address wallet_address,
+        string memory username,
+        string memory email,
+        bool is_admin
+    ) external onlyAdmin {
+        users[wallet_address] = User({
+            wallet_address: wallet_address,
+            username: username,
+            email: email,
+            registration_date: block.timestamp,
+            is_authorized: true,
+            is_admin: is_admin
+        });
+        email_to_wallet[email] = wallet_address;
+    }
+
+    function isAuthorized(address wallet_address) external view returns (bool) {
+        return users[wallet_address].is_authorized;
+    }
+
+    function revokeUser(address wallet_address) external onlyAdmin {
+        users[wallet_address].is_authorized = false;
+    }
+}
+```
+
+### Benefits
+
+**1. Fully On-Chain User Management**
+
+- All user data on blockchain
+- No database needed
+- Replicated across 4 validator nodes
+
+**2. Dynamic Authorization**
+
+```typescript
+// Admin can grant/revoke access without contract redeployment:
+await userRegistry.revokeUser("0x5e341B101...");
+await userRegistry.reactivateUser("0x5e341B101...");
+await userRegistry.grantAdmin("0x5e341B101...");
+```
+
+**3. Integration with CertificateRegistry**
+
+```solidity
+contract CertificateRegistry {
+    IUserRegistry public userRegistry;
+
+    function issueCertificate(
+        // ...
+        address issuer_address
+    ) external {
+        // Check authorization on-chain
+        require(userRegistry.isAuthorized(issuer_address),
+                "Not authorized");
+        // ...
+    }
+}
+```
+
+**4. User Metadata Storage**
+
+```typescript
+// Retrieve user details:
+const user = await userRegistry.getUser("0xFE3B557E...");
+console.log(user.username); // "admin"
+console.log(user.email); // "admin@university.edu"
+console.log(user.is_admin); // true
+```
+
+**5. Audit Trail**
+
+```solidity
+event UserRegistered(address indexed wallet_address, string username, string email, uint256 registration_date);
+event UserRevoked(address indexed wallet_address);
+event UserReactivated(address indexed wallet_address);
+```
+
+All user management actions permanently logged.
+
+### Real-World Usage
+
+**User registration flow:**
+
+```typescript
+// 1. Admin calls API
+POST /users/register
+{
+  "username": "john_doe",
+  "email": "john@university.edu",
+  "is_admin": false
+}
+
+// 2. Backend generates wallet
+const newWallet = ethers.Wallet.createRandom();
+
+// 3. Backend registers on UserRegistry contract
+const tx = await userRegistry.registerUser(
+  newWallet.address,
+  "john_doe",
+  "john@university.edu",
+  false
+);
+
+// 4. Returns private key (user imports to Rabby)
+return {
+  wallet_address: newWallet.address,
+  private_key: newWallet.privateKey,  // ⚠️ Shown once
+  username: "john_doe"
+};
+```
+
+**Certificate issuance with authorization check:**
+
+```typescript
+// 1. User logs in with Rabby (Web3 auth)
+const { access_token } = await auth.walletLogin(signature);
+
+// 2. User issues certificate via API
+POST /certificates/issue
+Authorization: Bearer {access_token}
+
+// 3. Backend extracts wallet from JWT
+const { walletAddress } = jwt.verify(access_token);
+
+// 4. Smart contract checks UserRegistry.isAuthorized(walletAddress)
+// 5. If authorized, certificate issued with issuer = walletAddress
+```
+
+### Why This is Brilliant
+
+**Thesis perspective:**
+
+- Demonstrates true blockchain architecture (no hybrid)
+- Shows smart contract composition (UserRegistry ↔ CertificateRegistry)
+- Proves understanding of on-chain access control
+
+**Engineering perspective:**
+
+- Scalable (can have unlimited users)
+- Secure (authorization checked on-chain)
+- Maintainable (clear separation of concerns)
+
+---
+
+## 17. Why Certificate Versioning by student_id?
+
+### The Problem
+
+Student CGPA changes as they complete more courses. How do you handle updated certificates?
+
+### Naive Approach: One Certificate Per Student
+
+```solidity
+mapping(string => Certificate) public student_to_certificate;
+
+function issueCertificate(string memory student_id, ...) external {
+    student_to_certificate[student_id] = Certificate({...});
+    // ❌ Overwrites previous certificate, losing history
+}
+```
+
+**Problems:**
+
+- ❌ No history (previous CGPA lost)
+- ❌ Cannot prove what CGPA was at time X
+- ❌ Blockchain immutability wasted (data overwritten)
+
+### Your Implementation: Version Tracking
+
+```solidity
+struct Certificate {
+    bytes32 cert_hash;
+    string student_id;        // Primary key
+    uint256 version;          // v1, v2, v3...
+    string student_name;
+    string degree_program;
+    uint16 cgpa;
+    string issuing_authority;
+    address issuer;
+    bool is_revoked;
+    bytes signature;
+    uint256 issuance_date;
+}
+
+mapping(bytes32 => Certificate) private certificates;
+mapping(string => uint256) public student_to_latest_version;
+mapping(string => mapping(uint256 => bytes32)) public student_version_to_hash;
+mapping(string => bytes32) public student_to_active_cert_hash;
+```
+
+### How It Works
+
+**Issuing first certificate:**
+
+```solidity
+student_id: "22-46734-1"
+latest_version: 0  // No previous certificate
+
+// Create version 1:
+new_version = 0 + 1 = 1
+
+// Store:
+certificates[hash_v1] = Certificate({
+    student_id: "22-46734-1",
+    version: 1,
+    cgpa: 350,  // 3.50
+    is_revoked: false,
+    // ...
+});
+
+student_to_latest_version["22-46734-1"] = 1;
+student_version_to_hash["22-46734-1"][1] = hash_v1;
+student_to_active_cert_hash["22-46734-1"] = hash_v1;
+```
+
+**Issuing updated certificate (new semester completed):**
+
+```solidity
+// Step 1: Revoke active certificate
+revokeCertificate(hash_v1);
+// Sets is_revoked = true
+// Sets student_to_active_cert_hash["22-46734-1"] = 0x0
+
+// Step 2: Issue new version
+latest_version: 1  // Previous version
+new_version = 1 + 1 = 2
+
+certificates[hash_v2] = Certificate({
+    student_id: "22-46734-1",
+    version: 2,
+    cgpa: 370,  // 3.70 (improved!)
+    is_revoked: false,
+    // ...
+});
+
+student_to_latest_version["22-46734-1"] = 2;
+student_version_to_hash["22-46734-1"][2] = hash_v2;
+student_to_active_cert_hash["22-46734-1"] = hash_v2;
+```
+
+**Result:**
+
+```
+Student "22-46734-1" history:
+├─ v1: CGPA 3.50 (issued 2024-01-15, revoked 2024-05-20)
+└─ v2: CGPA 3.70 (issued 2024-05-20, active)
+```
+
+### Benefits
+
+**1. Complete History**
+
+```typescript
+// Get all versions:
+const hashes = await contract.getAllVersions("22-46734-1");
+// Returns: [hash_v1, hash_v2]
+
+const cert_v1 = await contract.verifyCertificate(hash_v1);
+console.log(cert_v1.cgpa / 100); // 3.50
+console.log(cert_v1.is_revoked); // true
+
+const cert_v2 = await contract.verifyCertificate(hash_v2);
+console.log(cert_v2.cgpa / 100); // 3.70
+console.log(cert_v2.is_revoked); // false
+```
+
+**2. Active Certificate Enforcement**
+
+```solidity
+function issueCertificate(...) external {
+    uint256 latest_version = student_to_latest_version[student_id];
+
+    if (latest_version > 0) {
+        bytes32 active_hash = student_to_active_cert_hash[student_id];
+        require(active_hash == bytes32(0),
+                "Student has an active certificate. Revoke it before creating a new version.");
+    }
+    // ...
+}
+```
+
+Prevents accidentally issuing duplicate active certificates.
+
+**3. Audit Trail**
+
+```typescript
+// Who issued each version?
+const cert_v1 = await contract.verifyCertificate(hash_v1);
+console.log(cert_v1.issuer); // 0xFE3B557E... (admin)
+
+const cert_v2 = await contract.verifyCertificate(hash_v2);
+console.log(cert_v2.issuer); // 0x5e341B101... (registrar_user)
+
+// Different issuers for different versions!
+```
+
+**4. Flexible Verification**
+
+```typescript
+// Verify active certificate:
+const activeCert = await contract.getActiveCertificate("22-46734-1");
+if (activeCert.cert_hash === ethers.ZeroHash) {
+  console.log("No active certificate");
+} else {
+  console.log(`Active CGPA: ${activeCert.cgpa / 100}`);
+}
+
+// Verify specific version:
+const cert_v1 = await contract.verifyCertificate(hash_v1);
+if (cert_v1.is_revoked) {
+  console.log("This version is revoked");
+}
+```
+
+### Use Cases
+
+**1. Mid-program Certificate**
+Student completes 2 years of 4-year program:
+
+```
+Issue v1: CGPA 3.50, "In Progress"
+```
+
+**2. Final Certificate**
+Student graduates:
+
+```
+Revoke v1
+Issue v2: CGPA 3.85, "Completed"
+```
+
+**3. Correction**
+Grade calculation error discovered:
+
+```
+Revoke v2 (incorrect CGPA)
+Issue v3: CGPA 3.92 (corrected)
+```
+
+**All versions remain on blockchain for audit.**
+
+### Why This is Important for Thesis
+
+**Demonstrates:**
+
+- Real-world requirement (CGPA updates over time)
+- Proper versioning strategy (not just overwriting)
+- Smart contract data modeling
+- History preservation (true blockchain benefit)
+
+**Comparison with database:**
+
+```sql
+-- Database approach: UPDATE (loses history)
+UPDATE certificates SET cgpa = 3.70 WHERE student_id = '22-46734-1';
+
+-- Your approach: New version (preserves history)
+INSERT INTO blockchain: version 2, cgpa 3.70
+```
+
+---
+
+## 18. Architecture Trade-offs Summary
 
 ### Performance vs Decentralization
 
