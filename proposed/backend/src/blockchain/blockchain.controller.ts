@@ -202,6 +202,13 @@ export class BlockchainController {
     };
   }
 
+  // Search endpoint must come before specific routes
+  @UseGuards(AuthGuard('jwt'))
+  @Get('certificates/search')
+  async searchCertificates(@Query('q') query: string) {
+    return this.blockchainService.searchCertificates(query);
+  }
+
   // PDF routes must come before :cert_hash routes
   @Get('certificates/:cert_hash/download')
   async downloadCertificate(

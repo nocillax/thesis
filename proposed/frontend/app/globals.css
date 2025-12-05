@@ -65,3 +65,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sonner toast font weight */
+:where([data-sonner-toast]) :where([data-title]),
+:where([data-sonner-toast]) :where([data-description]) {
+  font-weight: 600 !important;
+}
+
+/* Remove focus ring from Command component */
+[cmdk-root] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[cmdk-input] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[cmdk-input]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  ring: 0 !important;
+}

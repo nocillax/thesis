@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, Menu, LogOut, User, Shield } from "lucide-react";
+import { Menu, LogOut, User, Shield } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -17,21 +16,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/stores/authStore";
 import { truncateAddress } from "@/lib/utils/format";
+import { SearchCommand } from "./SearchCommand";
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuthStore();
-  const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/certificates/student/${searchQuery.trim()}`);
-      setSearchQuery("");
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -77,21 +68,9 @@ export function Header() {
 
         {/* Search Bar */}
         {isAuthenticated && (
-          <form
-            onSubmit={handleSearch}
-            className="hidden md:flex items-center gap-2 flex-1 max-w-sm mx-6"
-          >
-            <div className="relative w-full">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by Student ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </form>
+          <div className="hidden md:flex items-center flex-1 max-w-sm mx-6">
+            <SearchCommand />
+          </div>
         )}
 
         {/* User Menu or Login Button */}
@@ -196,18 +175,9 @@ export function Header() {
               </Link>
             ))}
             {isAuthenticated && (
-              <form onSubmit={handleSearch} className="px-4 pt-2">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search by Student ID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </form>
+              <div className="px-4 pt-2">
+                <SearchCommand />
+              </div>
             )}
           </nav>
         </div>

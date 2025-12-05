@@ -363,7 +363,81 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 9. Get All Certificates
+## 9. Search Certificates (Fuzzy Match)
+
+**Endpoint:** `GET /api/blockchain/certificates/search`
+
+**Auth:** Admin JWT Required
+
+**Query Parameters:**
+
+- `q` - Search query (student ID)
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:**
+
+```bash
+GET /api/blockchain/certificates/search?q=22-467
+```
+
+**Response:**
+
+```json
+{
+  "exact": {
+    "cert_hash": "0xabcd1234...",
+    "student_id": "22-46734-1",
+    "version": 1,
+    "student_name": "Alice Johnson",
+    "degree": "Bachelor of Science",
+    "program": "Computer Science",
+    "cgpa": 3.85,
+    "issuing_authority": "AIUB",
+    "issuer": "0x123...",
+    "issuer_name": "Admin User",
+    "is_revoked": false,
+    "signature": "0x...",
+    "issuance_date": "2025-12-06T08:30:00Z"
+  },
+  "suggestions": [
+    {
+      "cert_hash": "0xef567890...",
+      "student_id": "22-46735-1",
+      "student_name": "Bob Smith",
+      "degree": "Bachelor of Science",
+      "program": "Computer Science",
+      "cgpa": 3.72,
+      "is_revoked": false
+      // ... other fields
+    },
+    {
+      "cert_hash": "0x12345678...",
+      "student_id": "21-46734-1",
+      "student_name": "Carol White",
+      "degree": "Bachelor of Science",
+      "program": "Computer Science",
+      "cgpa": 3.91,
+      "is_revoked": false
+      // ... other fields
+    }
+  ]
+}
+```
+
+**Notes:**
+
+- Returns exact match (if found) using blockchain's indexed lookup
+- Returns up to 5 similar student IDs using fuzzy matching (Levenshtein distance ≤ 3)
+- Prioritizes substring matches over edit distance
+- Works without authentication (public search)
+- Efficient: Only returns matching certificates, not all 10,000+
+
+---
+
+## 10. Get All Certificates
 
 **Endpoint:** `GET /api/blockchain/certificates`
 
@@ -451,7 +525,7 @@ GET /api/blockchain/certificates?status=revoked
 
 ---
 
-## 8. Issue Certificate
+## 11. Issue Certificate
 
 **Endpoint:** `POST /api/blockchain/certificates`
 
@@ -498,7 +572,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 11. Verify Certificate
+## 12. Verify Certificate
 
 **Endpoint:** `GET /api/blockchain/certificates/verify/:cert_hash`
 
@@ -527,7 +601,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 10. Revoke Certificate
+## 13. Revoke Certificate
 
 **Endpoint:** `PATCH /api/blockchain/certificates/:cert_hash/revoke`
 
@@ -554,7 +628,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 11. Reactivate Certificate
+## 14. Reactivate Certificate
 
 **Endpoint:** `PATCH /api/blockchain/certificates/:cert_hash/reactivate`
 
@@ -581,7 +655,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 12. Get Audit Logs
+## 15. Get Audit Logs
 
 **Endpoint:** `GET /api/blockchain/certificates/audit-logs?cert_hash=:cert_hash`
 
@@ -625,7 +699,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 13. Get Active Certificate by Student ID
+## 16. Get Active Certificate by Student ID
 
 **Endpoint:** `GET /api/blockchain/certificates/student/:student_id/active`
 
@@ -656,7 +730,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 14. Get All Certificate Versions by Student ID
+## 17. Get All Certificate Versions by Student ID
 
 **Endpoint:** `GET /api/blockchain/certificates/student/:student_id/versions`
 

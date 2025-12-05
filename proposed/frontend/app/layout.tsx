@@ -48,8 +48,7 @@ export default function RootLayout({
           </div>
           <Toaster
             richColors
-            closeButton
-            position="top-right"
+            position="bottom-right"
             toastOptions={{
               style: {
                 background: "hsl(var(--background))",

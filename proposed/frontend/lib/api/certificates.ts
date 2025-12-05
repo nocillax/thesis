@@ -76,4 +76,14 @@ export const certificatesAPI = {
     );
     return response.data;
   },
+
+  // Search certificates
+  search: async (
+    query: string
+  ): Promise<{ exact: string | null; suggestions: string[] }> => {
+    const response = await apiClient.get(
+      `/api/blockchain/certificates/search?q=${encodeURIComponent(query)}`
+    );
+    return response.data;
+  },
 };

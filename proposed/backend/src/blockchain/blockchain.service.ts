@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { createHash } from 'crypto';
+import * as levenshtein from 'fast-levenshtein';
 
 const CONTRACT_ABI = [
   'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, bytes signature, address issuer_address) external',
@@ -676,6 +677,70 @@ export class BlockchainService implements OnModuleInit {
       throw new BadRequestException(
         error.message || 'Failed to get certificate versions',
       );
+    }
+  }
+
+  async searchCertificates(query: string) {
+    if (!query || query.trim().length === 0) {
+      return { exact: null, suggestions: [] };
+    }
+
+    const searchQuery = query.trim().toLowerCase();
+
+    try {
+      // Try exact match first using blockchain index
+      const exactHash =
+        await this.certificateContract.student_to_active_cert_hash(
+          searchQuery.toUpperCase(),
+        );
+
+      let exactMatch: string | null = null;
+      if (exactHash && exactHash !== ethers.ZeroHash) {
+        try {
+          const cert = await this.verifyCertificate(exactHash);
+          exactMatch = cert.student_id;
+        } catch (error) {
+          console.warn(
+            'Exact match hash exists but certificate retrieval failed',
+          );
+        }
+      }
+
+      // Get all certificates for fuzzy matching
+      const allCerts = await this.getAllCertificates();
+
+      // Extract unique student IDs
+      const uniqueStudentIds = Array.from(
+        new Set(allCerts.map((cert) => cert.student_id)),
+      );
+
+      // Calculate Levenshtein distance for each unique student_id
+      const matches = uniqueStudentIds
+        .filter((studentId) => studentId.toLowerCase() !== searchQuery) // Exclude exact match from suggestions
+        .map((studentId) => ({
+          studentId,
+          distance: levenshtein.get(searchQuery, studentId.toLowerCase()),
+          // Also check if query is a substring
+          isSubstring: studentId.toLowerCase().includes(searchQuery),
+        }))
+        .filter((item) => item.distance <= 3 || item.isSubstring) // Max distance of 3 or contains substring
+        .sort((a, b) => {
+          // Prioritize substring matches
+          if (a.isSubstring && !b.isSubstring) return -1;
+          if (!a.isSubstring && b.isSubstring) return 1;
+          // Then sort by distance
+          return a.distance - b.distance;
+        })
+        .slice(0, 5) // Top 5 suggestions
+        .map((item) => item.studentId);
+
+      return {
+        exact: exactMatch,
+        suggestions: matches,
+      };
+    } catch (error) {
+      console.error('Search error:', error);
+      throw new BadRequestException('Failed to search certificates');
     }
   }
 }
