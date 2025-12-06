@@ -299,6 +299,11 @@ export default function CertificateDetailPage({
                 Show All Versions
               </Link>
             </Button>
+            <Button variant="outline" asChild className="flex-1">
+              <Link href={`/audit-logs/certificate/${certificate.cert_hash}`}>
+                Audit Logs
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

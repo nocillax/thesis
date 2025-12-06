@@ -157,7 +157,9 @@ contract CertificateRegistry {
         );
     }
 
-    function revokeCertificate(bytes32 cert_hash) external {
+    function revokeCertificate(bytes32 cert_hash, address actor_address) external {
+        require(userRegistry.isAuthorized(actor_address), "Provided actor is not authorized");
+        require(msg.sender == admin || msg.sender == actor_address, "Only admin or the actor can revoke certificates");
         require(certificate_exists[cert_hash], "Certificate does not exist");
 
         Certificate storage cert = certificates[cert_hash];
@@ -168,10 +170,12 @@ contract CertificateRegistry {
             student_to_active_cert_hash[cert.student_id] = bytes32(0);
         }
 
-        emit CertificateRevoked(cert_hash, msg.sender, block.number);
+        emit CertificateRevoked(cert_hash, actor_address, block.number);
     }
 
-    function reactivateCertificate(bytes32 cert_hash) external {
+    function reactivateCertificate(bytes32 cert_hash, address actor_address) external {
+        require(userRegistry.isAuthorized(actor_address), "Provided actor is not authorized");
+        require(msg.sender == admin || msg.sender == actor_address, "Only admin or the actor can reactivate certificates");
         require(certificate_exists[cert_hash], "Certificate does not exist");
         
         Certificate storage cert = certificates[cert_hash];
@@ -185,7 +189,7 @@ contract CertificateRegistry {
         cert.is_revoked = false;
         student_to_active_cert_hash[cert.student_id] = cert_hash;
 
-        emit CertificateReactivated(cert_hash, msg.sender, block.number);
+        emit CertificateReactivated(cert_hash, actor_address, block.number);
     }
     
     // Get active certificate for a student

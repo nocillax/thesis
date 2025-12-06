@@ -8,35 +8,20 @@ import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { createHash } from 'crypto';
 import * as levenshtein from 'fast-levenshtein';
+import * as path from 'path';
+import * as fs from 'fs';
 
-const CONTRACT_ABI = [
-  'function issueCertificate(bytes32 cert_hash, string student_id, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, bytes signature, address issuer_address) external',
-  'function verifyCertificate(bytes32 cert_hash) external view returns (string student_id, uint256 version, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date)',
-  'function revokeCertificate(bytes32 cert_hash) external',
-  'function reactivateCertificate(bytes32 cert_hash) external',
-  'function getActiveCertificate(string student_id) external view returns (tuple(bytes32 cert_hash, string student_id, uint256 version, string student_name, string degree, string program, uint16 cgpa, string issuing_authority, address issuer, bool is_revoked, bytes signature, uint256 issuance_date))',
-  'function getAllVersions(string student_id) external view returns (bytes32[])',
-  'function student_to_latest_version(string student_id) external view returns (uint256)',
-  'function student_to_active_cert_hash(string student_id) external view returns (bytes32)',
-  'event CertificateIssued(bytes32 indexed cert_hash, string indexed student_id, uint256 version, address indexed issuer, uint256 block_number)',
-  'event CertificateRevoked(bytes32 indexed cert_hash, address indexed revoked_by, uint256 block_number)',
-  'event CertificateReactivated(bytes32 indexed cert_hash, address indexed reactivated_by, uint256 block_number)',
-];
+// Load ABIs from JSON files
+const ABIS_PATH = path.join(process.cwd(), 'src', 'blockchain', 'abis');
+const certificateAbiJson = JSON.parse(
+  fs.readFileSync(path.join(ABIS_PATH, 'CertificateRegistry.json'), 'utf8'),
+);
+const userRegistryAbiJson = JSON.parse(
+  fs.readFileSync(path.join(ABIS_PATH, 'UserRegistry.json'), 'utf8'),
+);
 
-const USER_REGISTRY_ABI = [
-  'function registerUser(address wallet_address, string username, string email, bool is_admin) external',
-  'function getUser(address wallet_address) external view returns (string username, string email, uint256 registration_date, bool is_authorized, bool is_admin)',
-  'function getUserByEmail(string email) external view returns (address wallet_address, string username, uint256 registration_date, bool is_authorized, bool is_admin)',
-  'function revokeUser(address wallet_address) external',
-  'function reactivateUser(address wallet_address) external',
-  'function grantAdmin(address wallet_address) external',
-  'function revokeAdmin(address wallet_address) external',
-  'function isAuthorized(address wallet_address) external view returns (bool)',
-  'function userExists(address wallet_address) external view returns (bool)',
-  'event UserRegistered(address indexed wallet_address, string username, string email, uint256 registration_date)',
-  'event UserRevoked(address indexed wallet_address)',
-  'event UserReactivated(address indexed wallet_address)',
-];
+const CONTRACT_ABI = certificateAbiJson.abi;
+const USER_REGISTRY_ABI = userRegistryAbiJson.abi;
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -276,7 +261,7 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
-  async revokeCertificate(cert_hash: string) {
+  async revokeCertificate(cert_hash: string, actor_address: string) {
     try {
       // Check current status before revoking
       const cert = await this.verifyCertificate(cert_hash);
@@ -284,7 +269,10 @@ export class BlockchainService implements OnModuleInit {
         throw new BadRequestException('Certificate is already revoked');
       }
 
-      const tx = await this.certificateContract.revokeCertificate(cert_hash);
+      const tx = await this.certificateContract.revokeCertificate(
+        cert_hash,
+        actor_address,
+      );
       const receipt = await tx.wait();
 
       return {
@@ -306,7 +294,7 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
-  async reactivateCertificate(cert_hash: string) {
+  async reactivateCertificate(cert_hash: string, actor_address: string) {
     try {
       // Check current status before reactivating
       const cert = await this.verifyCertificate(cert_hash);
@@ -314,8 +302,10 @@ export class BlockchainService implements OnModuleInit {
         throw new BadRequestException('Certificate is already active');
       }
 
-      const tx =
-        await this.certificateContract.reactivateCertificate(cert_hash);
+      const tx = await this.certificateContract.reactivateCertificate(
+        cert_hash,
+        actor_address,
+      );
       const receipt = await tx.wait();
 
       return {
@@ -418,10 +408,10 @@ export class BlockchainService implements OnModuleInit {
 
     return allEvents
       .filter((e): e is NonNullable<typeof e> => e !== undefined)
-      .sort((a, b) => a.block_number - b.block_number);
+      .sort((a, b) => b.block_number - a.block_number); // Descending order (newest first)
   }
 
-  async getAllAuditLogs() {
+  async getAllAuditLogs(page?: number, limit?: number) {
     // Get all events without filtering by cert_hash
     const issuedFilter = this.certificateContract.filters.CertificateIssued();
     const revokedFilter = this.certificateContract.filters.CertificateRevoked();
@@ -490,27 +480,53 @@ export class BlockchainService implements OnModuleInit {
         .filter(Boolean),
     ]);
 
-    return allEvents
+    const sorted = allEvents
       .filter((e): e is NonNullable<typeof e> => e !== undefined)
       .sort((a, b) => b.block_number - a.block_number); // Descending order (newest first)
+
+    // Apply pagination if provided
+    if (page && limit) {
+      const total_count = sorted.length;
+      const total_pages = Math.ceil(total_count / limit);
+      const start = (page - 1) * limit;
+      const end = start + limit;
+      const data = sorted.slice(start, end);
+
+      return {
+        data,
+        meta: {
+          current_page: page,
+          total_pages,
+          total_count,
+          has_more: page < total_pages,
+        },
+      };
+    }
+
+    return sorted;
   }
 
-  async getUserAuditLogs(walletAddress: string) {
+  async getUserAuditLogs(walletAddress: string, page?: number, limit?: number) {
     // Get all events where this user was the actor
+    // For CertificateIssued: cert_hash, student_id, version, issuer are indexed
     const issuedFilter = this.certificateContract.filters.CertificateIssued(
-      null,
-      null,
-      null,
-      walletAddress,
+      null, // cert_hash
+      null, // student_id
+      null, // version
+      walletAddress, // issuer
     );
+
+    // For CertificateRevoked: cert_hash, revoked_by are indexed
     const revokedFilter = this.certificateContract.filters.CertificateRevoked(
-      null,
-      walletAddress,
+      null, // cert_hash
+      walletAddress, // revoked_by
     );
+
+    // For CertificateReactivated: cert_hash, reactivated_by are indexed
     const reactivatedFilter =
       this.certificateContract.filters.CertificateReactivated(
-        null,
-        walletAddress,
+        null, // cert_hash
+        walletAddress, // reactivated_by
       );
 
     const [issuedEvents, revokedEvents, reactivatedEvents] = await Promise.all([
@@ -572,9 +588,30 @@ export class BlockchainService implements OnModuleInit {
         .filter(Boolean),
     ]);
 
-    return allEvents
+    const sorted = allEvents
       .filter((e): e is NonNullable<typeof e> => e !== undefined)
       .sort((a, b) => b.block_number - a.block_number); // Descending order (newest first)
+
+    // Apply pagination if provided
+    if (page && limit) {
+      const total_count = sorted.length;
+      const total_pages = Math.ceil(total_count / limit);
+      const start = (page - 1) * limit;
+      const end = start + limit;
+      const data = sorted.slice(start, end);
+
+      return {
+        data,
+        meta: {
+          current_page: page,
+          total_pages,
+          total_count,
+          has_more: page < total_pages,
+        },
+      };
+    }
+
+    return sorted;
   }
 
   async getUserByWalletAddress(walletAddress: string) {
@@ -909,6 +946,83 @@ export class BlockchainService implements OnModuleInit {
     } catch (error) {
       console.error('Search error:', error);
       throw new BadRequestException('Failed to search certificates');
+    }
+  }
+
+  async getStats(walletAddress: string) {
+    try {
+      // Get all certificates by querying events
+      const issuedFilter = this.certificateContract.filters.CertificateIssued();
+      const issuedEvents =
+        await this.certificateContract.queryFilter(issuedFilter);
+
+      // Count active certificates (non-revoked)
+      let activeCertificatesCount = 0;
+      for (const event of issuedEvents) {
+        if ('args' in event) {
+          try {
+            const cert = await this.certificateContract.verifyCertificate(
+              event.args.cert_hash,
+            );
+            if (!cert.is_revoked) {
+              activeCertificatesCount++;
+            }
+          } catch {
+            // Skip certificates that can't be verified
+          }
+        }
+      }
+
+      // Get all users
+      const userRegisteredFilter =
+        this.userRegistryContract.filters.UserRegistered();
+      const userEvents =
+        await this.userRegistryContract.queryFilter(userRegisteredFilter);
+
+      // Count authorized users
+      let authorizedUsersCount = 0;
+      for (const event of userEvents) {
+        if ('args' in event) {
+          try {
+            const user = await this.userRegistryContract.getUser(
+              event.args.wallet_address,
+            );
+            if (user.is_authorized) {
+              authorizedUsersCount++;
+            }
+          } catch {
+            // Skip users that can't be fetched
+          }
+        }
+      }
+
+      // Count certificates issued by this user
+      const userIssuedFilter =
+        this.certificateContract.filters.CertificateIssued(
+          null,
+          null,
+          null,
+          walletAddress,
+        );
+      const userIssuedEvents =
+        await this.certificateContract.queryFilter(userIssuedFilter);
+      const certificatesIssuedByMe = userIssuedEvents.length;
+
+      // Get recent activity (last 3 logs for this user)
+      const recentActivity = await this.getUserAuditLogs(walletAddress);
+      const recentActivityData = Array.isArray(recentActivity)
+        ? recentActivity.slice(0, 3)
+        : recentActivity.data.slice(0, 3);
+
+      return {
+        active_certificates: activeCertificatesCount,
+        authorized_users: authorizedUsersCount,
+        certificates_issued_by_me: certificatesIssuedByMe,
+        recent_activity: recentActivityData,
+      };
+    } catch (error) {
+      console.error('Stats error:', error);
+      throw new BadRequestException('Failed to fetch statistics');
     }
   }
 }

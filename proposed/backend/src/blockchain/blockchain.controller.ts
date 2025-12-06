@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  HttpException,
   Request,
   Res,
   StreamableFile,
@@ -265,29 +266,72 @@ export class BlockchainController {
 
   @UseGuards(AuthGuard('jwt'), AuthorizedGuard)
   @Patch('certificates/:cert_hash/revoke')
-  async revokeCertificate(@Param('cert_hash') cert_hash: string) {
-    return this.blockchainService.revokeCertificate(cert_hash);
+  async revokeCertificate(
+    @Param('cert_hash') cert_hash: string,
+    @Request() req,
+  ) {
+    return this.blockchainService.revokeCertificate(
+      cert_hash,
+      req.user.walletAddress,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), AuthorizedGuard)
   @Patch('certificates/:cert_hash/reactivate')
-  async reactivateCertificate(@Param('cert_hash') cert_hash: string) {
-    return this.blockchainService.reactivateCertificate(cert_hash);
+  async reactivateCertificate(
+    @Param('cert_hash') cert_hash: string,
+    @Request() req,
+  ) {
+    return this.blockchainService.reactivateCertificate(
+      cert_hash,
+      req.user.walletAddress,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Get('certificates/audit-logs')
-  async getAuditLogs(@Query('cert_hash') cert_hash?: string) {
+  async getAuditLogs(
+    @Query('cert_hash') cert_hash?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Request() req?: any,
+  ) {
     if (!cert_hash) {
-      // If no cert_hash, return all audit logs
-      return this.blockchainService.getAllAuditLogs();
+      // System-wide audit logs - admin only
+      const user = await this.blockchainService.getUserByWalletAddress(
+        req.user.walletAddress,
+      );
+      if (!user.is_admin) {
+        throw new HttpException('Admin access required', HttpStatus.FORBIDDEN);
+      }
+
+      // If no cert_hash, return all audit logs with pagination
+      const pageNum = page ? parseInt(page) : undefined;
+      const limitNum = limit ? parseInt(limit) : undefined;
+      return this.blockchainService.getAllAuditLogs(pageNum, limitNum);
     }
     return this.blockchainService.getAuditLogs(cert_hash);
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Get('certificates/audit-logs/user/:wallet_address')
-  async getUserAuditLogs(@Param('wallet_address') wallet_address: string) {
-    return this.blockchainService.getUserAuditLogs(wallet_address);
+  async getUserAuditLogs(
+    @Param('wallet_address') wallet_address: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = page ? parseInt(page) : undefined;
+    const limitNum = limit ? parseInt(limit) : undefined;
+    return this.blockchainService.getUserAuditLogs(
+      wallet_address,
+      pageNum,
+      limitNum,
+    );
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('stats')
+  async getStats(@Request() req) {
+    return this.blockchainService.getStats(req.user.walletAddress);
   }
 }

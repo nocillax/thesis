@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,6 +22,7 @@ import {
   ChevronsUpDown,
   Crown,
   Loader2,
+  History,
 } from "lucide-react";
 import { User } from "@/types/user";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,7 @@ interface UserTableProps {
 }
 
 export function UserTable({ data }: UserTableProps) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -147,6 +150,22 @@ export function UserTable({ data }: UserTableProps) {
       cell: ({ row }) => (
         <StatusBadge isActive={row.original.is_authorized} type="user" />
       ),
+    },
+    {
+      id: "logs",
+      header: "Logs",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            router.push(`/audit-logs/user/${row.original.wallet_address}`)
+          }
+        >
+          <History className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+        </Button>
+      ),
+      enableSorting: false,
     },
   ];
 

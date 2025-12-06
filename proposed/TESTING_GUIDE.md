@@ -719,9 +719,22 @@ Authorization: Bearer YOUR_TOKEN
 Authorization: Bearer YOUR_TOKEN
 ```
 
-**Example:** `GET /api/blockchain/certificates/audit-logs`
+**Query Parameters (Optional):**
 
-**Response:**
+- `page` - Page number
+- `limit` - Items per page
+
+**Examples:**
+
+```bash
+# Get all audit logs (no pagination)
+GET /api/blockchain/certificates/audit-logs
+
+# Get page 1 with 20 logs per page
+GET /api/blockchain/certificates/audit-logs?page=1&limit=20
+```
+
+**Response (without pagination):**
 
 ```json
 [
@@ -756,6 +769,31 @@ Authorization: Bearer YOUR_TOKEN
 ]
 ```
 
+**Response (with pagination):**
+
+```json
+{
+  "data": [
+    {
+      "action": "ISSUED",
+      "cert_hash": "0xefgh5678...",
+      "student_id": "22-46735-1",
+      "version": 1,
+      "issuer": "0x1234...",
+      "block_number": 130,
+      "transaction_hash": "0x9999...",
+      "timestamp": "2025-11-28T10:30:00.000Z"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_count": 95,
+    "has_more": true
+  }
+}
+```
+
 **Note:** Returns ALL certificate events across the entire system sorted by timestamp (newest first). Useful for system-wide monitoring and compliance auditing. Issued events include `student_id` and `version` for context.
 
 ---
@@ -772,9 +810,22 @@ Authorization: Bearer YOUR_TOKEN
 Authorization: Bearer YOUR_TOKEN
 ```
 
-**Example:** `GET /api/blockchain/certificates/audit-logs/user/0x08Bd40C733...`
+**Query Parameters (Optional):**
 
-**Response:**
+- `page` - Page number
+- `limit` - Items per page
+
+**Examples:**
+
+```bash
+# Get all user logs (no pagination)
+GET /api/blockchain/certificates/audit-logs/user/0x08Bd40C733...
+
+# Get page 1 with 20 logs per page
+GET /api/blockchain/certificates/audit-logs/user/0x08Bd40C733...?page=1&limit=20
+```
+
+**Response (without pagination):**
 
 ```json
 [
@@ -804,6 +855,30 @@ Authorization: Bearer YOUR_TOKEN
     "timestamp": "2025-11-27T01:28:41.000Z"
   }
 ]
+```
+
+**Response (with pagination):**
+
+```json
+{
+  "data": [
+    {
+      "action": "ISSUED",
+      "cert_hash": "0xefgh5678...",
+      "student_id": "22-46735-1",
+      "version": 1,
+      "block_number": 130,
+      "transaction_hash": "0x9999...",
+      "timestamp": "2025-11-28T10:30:00.000Z"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 3,
+    "total_count": 47,
+    "has_more": true
+  }
+}
 ```
 
 **Note:** Returns all certificate actions performed by a specific user (issued, revoked, reactivated) sorted by timestamp (newest first). Perfect for individual accountability and activity tracking.

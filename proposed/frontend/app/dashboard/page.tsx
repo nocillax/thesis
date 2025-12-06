@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
 import {
   FileText,
   Users,
@@ -10,8 +11,18 @@ import {
   Shield,
   TrendingUp,
   Clock,
+  History,
+  CheckCircle2,
+  UserCheck,
+  Award,
+  ArrowRight,
+  FileCheck,
+  Ban,
+  RefreshCw,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
+import { statsAPI } from "@/lib/api/stats";
 import {
   Card,
   CardContent,
@@ -20,11 +31,48 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+
+const getActionIcon = (action: string) => {
+  switch (action) {
+    case "ISSUED":
+      return <FileCheck className="h-3 w-3 text-green-600" />;
+    case "REVOKED":
+      return <Ban className="h-3 w-3 text-red-600" />;
+    case "REACTIVATED":
+      return <RefreshCw className="h-3 w-3 text-blue-600" />;
+    default:
+      return null;
+  }
+};
+
+const getActionBadgeVariant = (action: string) => {
+  switch (action) {
+    case "ISSUED":
+      return "default";
+    case "REVOKED":
+      return "destructive";
+    case "REACTIVATED":
+      return "secondary";
+    default:
+      return "default";
+  }
+};
 
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading } = useAuthStore();
+
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useQuery({
+    queryKey: ["stats"],
+    queryFn: statsAPI.get,
+    enabled: isAuthenticated,
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -57,49 +105,229 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Certificates
-            </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">
-              View all certificates
-            </p>
-          </CardContent>
-        </Card>
+      {/* Stats Cards */}
+      {user.is_admin ? (
+        // Admin Dashboard - 4 cards in 2x2 grid
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Active Certificates
+              </CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-green-600">
+                    {stats?.active_certificates ?? "-"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Non-revoked certificates
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Certificates
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">-</div>
-            <p className="text-xs text-muted-foreground">Currently valid</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Authorized Users
+              </CardTitle>
+              <UserCheck className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats?.authorized_users ?? "-"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Authorized system users
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Recent Activity
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">Last 7 days</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Issued by Me
+              </CardTitle>
+              <Award className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {stats?.certificates_issued_by_me ?? "-"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your contributions
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Recent Activity
+              </CardTitle>
+              <History className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : stats?.recent_activity && stats.recent_activity.length > 0 ? (
+                <div className="space-y-2">
+                  {stats.recent_activity.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <Badge
+                        variant={getActionBadgeVariant(log.action)}
+                        className="text-[10px] py-0"
+                      >
+                        {log.action}
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        {formatDistanceToNow(new Date(log.timestamp), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-2"
+                    asChild
+                  >
+                    <Link href={`/audit-logs/user/${user.wallet_address}`}>
+                      View All
+                      <ArrowRight className="ml-2 h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No recent activity
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        // Non-Admin Dashboard - 3 cards
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Active Certificates
+              </CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-green-600">
+                    {stats?.active_certificates ?? "-"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    System-wide valid certificates
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Issued by Me
+              </CardTitle>
+              <Award className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {stats?.certificates_issued_by_me ?? "-"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your contributions
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Recent Activity
+              </CardTitle>
+              <History className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : stats?.recent_activity && stats.recent_activity.length > 0 ? (
+                <div className="space-y-2">
+                  {stats.recent_activity.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <Badge
+                        variant={getActionBadgeVariant(log.action)}
+                        className="text-[10px] py-0"
+                      >
+                        {log.action}
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        {formatDistanceToNow(new Date(log.timestamp), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-2"
+                    asChild
+                  >
+                    <Link href={`/audit-logs/user/${user.wallet_address}`}>
+                      View All
+                      <ArrowRight className="ml-2 h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No recent activity
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -173,6 +401,16 @@ export default function DashboardPage() {
                 <Link href="/users/register">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Register New User
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <Link href="/audit-logs/system">
+                  <History className="mr-2 h-4 w-4" />
+                  System Audit Logs
                 </Link>
               </Button>
             </CardContent>
