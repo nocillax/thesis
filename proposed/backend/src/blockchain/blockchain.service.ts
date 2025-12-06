@@ -362,51 +362,219 @@ export class BlockchainService implements OnModuleInit {
       this.certificateContract.queryFilter(reactivatedFilter),
     ]);
 
-    const allEvents = [
+    const allEvents = await Promise.all([
       ...issuedEvents
-        .map((e) => {
-          if ('args' in e) {
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
             return {
               action: 'ISSUED',
               cert_hash: e.args.cert_hash,
               issuer: e.args.issuer,
               block_number: Number(e.args.block_number),
               transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
             };
           }
         })
         .filter(Boolean),
       ...revokedEvents
-        .map((e) => {
-          if ('args' in e) {
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
             return {
               action: 'REVOKED',
               cert_hash: e.args.cert_hash,
               revoked_by: e.args.revoked_by,
               block_number: Number(e.args.block_number),
               transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
             };
           }
         })
         .filter(Boolean),
       ...reactivatedEvents
-        .map((e) => {
-          if ('args' in e) {
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
             return {
               action: 'REACTIVATED',
               cert_hash: e.args.cert_hash,
               reactivated_by: e.args.reactivated_by,
               block_number: Number(e.args.block_number),
               transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
             };
           }
         })
         .filter(Boolean),
-    ];
+    ]);
 
     return allEvents
       .filter((e): e is NonNullable<typeof e> => e !== undefined)
       .sort((a, b) => a.block_number - b.block_number);
+  }
+
+  async getAllAuditLogs() {
+    // Get all events without filtering by cert_hash
+    const issuedFilter = this.certificateContract.filters.CertificateIssued();
+    const revokedFilter = this.certificateContract.filters.CertificateRevoked();
+    const reactivatedFilter =
+      this.certificateContract.filters.CertificateReactivated();
+
+    const [issuedEvents, revokedEvents, reactivatedEvents] = await Promise.all([
+      this.certificateContract.queryFilter(issuedFilter),
+      this.certificateContract.queryFilter(revokedFilter),
+      this.certificateContract.queryFilter(reactivatedFilter),
+    ]);
+
+    const allEvents = await Promise.all([
+      ...issuedEvents
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
+            return {
+              action: 'ISSUED',
+              cert_hash: e.args.cert_hash,
+              student_id: e.args.student_id,
+              version: Number(e.args.version),
+              issuer: e.args.issuer,
+              block_number: Number(e.args.block_number),
+              transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
+            };
+          }
+        })
+        .filter(Boolean),
+      ...revokedEvents
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
+            return {
+              action: 'REVOKED',
+              cert_hash: e.args.cert_hash,
+              revoked_by: e.args.revoked_by,
+              block_number: Number(e.args.block_number),
+              transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
+            };
+          }
+        })
+        .filter(Boolean),
+      ...reactivatedEvents
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
+            return {
+              action: 'REACTIVATED',
+              cert_hash: e.args.cert_hash,
+              reactivated_by: e.args.reactivated_by,
+              block_number: Number(e.args.block_number),
+              transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
+            };
+          }
+        })
+        .filter(Boolean),
+    ]);
+
+    return allEvents
+      .filter((e): e is NonNullable<typeof e> => e !== undefined)
+      .sort((a, b) => b.block_number - a.block_number); // Descending order (newest first)
+  }
+
+  async getUserAuditLogs(walletAddress: string) {
+    // Get all events where this user was the actor
+    const issuedFilter = this.certificateContract.filters.CertificateIssued(
+      null,
+      null,
+      null,
+      walletAddress,
+    );
+    const revokedFilter = this.certificateContract.filters.CertificateRevoked(
+      null,
+      walletAddress,
+    );
+    const reactivatedFilter =
+      this.certificateContract.filters.CertificateReactivated(
+        null,
+        walletAddress,
+      );
+
+    const [issuedEvents, revokedEvents, reactivatedEvents] = await Promise.all([
+      this.certificateContract.queryFilter(issuedFilter),
+      this.certificateContract.queryFilter(revokedFilter),
+      this.certificateContract.queryFilter(reactivatedFilter),
+    ]);
+
+    const allEvents = await Promise.all([
+      ...issuedEvents
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
+            return {
+              action: 'ISSUED',
+              cert_hash: e.args.cert_hash,
+              student_id: e.args.student_id,
+              version: Number(e.args.version),
+              block_number: Number(e.args.block_number),
+              transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
+            };
+          }
+        })
+        .filter(Boolean),
+      ...revokedEvents
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
+            return {
+              action: 'REVOKED',
+              cert_hash: e.args.cert_hash,
+              block_number: Number(e.args.block_number),
+              transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
+            };
+          }
+        })
+        .filter(Boolean),
+      ...reactivatedEvents
+        .map(async (e) => {
+          if ('args' in e && e.blockNumber) {
+            const block = await this.provider.getBlock(e.blockNumber);
+            return {
+              action: 'REACTIVATED',
+              cert_hash: e.args.cert_hash,
+              block_number: Number(e.args.block_number),
+              transaction_hash: e.transactionHash,
+              timestamp: block
+                ? new Date(block.timestamp * 1000).toISOString()
+                : null,
+            };
+          }
+        })
+        .filter(Boolean),
+    ]);
+
+    return allEvents
+      .filter((e): e is NonNullable<typeof e> => e !== undefined)
+      .sort((a, b) => b.block_number - a.block_number); // Descending order (newest first)
   }
 
   async getUserByWalletAddress(walletAddress: string) {

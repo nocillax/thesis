@@ -277,7 +277,17 @@ export class BlockchainController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('certificates/audit-logs')
-  async getAuditLogs(@Query('cert_hash') cert_hash: string) {
+  async getAuditLogs(@Query('cert_hash') cert_hash?: string) {
+    if (!cert_hash) {
+      // If no cert_hash, return all audit logs
+      return this.blockchainService.getAllAuditLogs();
+    }
     return this.blockchainService.getAuditLogs(cert_hash);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('certificates/audit-logs/user/:wallet_address')
+  async getUserAuditLogs(@Param('wallet_address') wallet_address: string) {
+    return this.blockchainService.getUserAuditLogs(wallet_address);
   }
 }

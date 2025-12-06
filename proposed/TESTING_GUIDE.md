@@ -658,7 +658,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 15. Get Audit Logs
+## 15. Get Audit Logs for Certificate
 
 **Endpoint:** `GET /api/blockchain/certificates/audit-logs?cert_hash=:cert_hash`
 
@@ -681,24 +681,132 @@ Authorization: Bearer YOUR_TOKEN
     "cert_hash": "0xabcd1234...",
     "issuer": "0x08Bd40C733...",
     "block_number": 123,
-    "transaction_hash": "0x5678..."
+    "transaction_hash": "0x5678...",
+    "timestamp": "2025-11-27T01:28:41.000Z"
   },
   {
     "action": "REVOKED",
     "cert_hash": "0xabcd1234...",
     "revoked_by": "0x08Bd40C733...",
     "block_number": 124,
-    "transaction_hash": "0x1111..."
+    "transaction_hash": "0x1111...",
+    "timestamp": "2025-11-27T02:15:30.000Z"
   },
   {
     "action": "REACTIVATED",
     "cert_hash": "0xabcd1234...",
     "reactivated_by": "0x08Bd40C733...",
     "block_number": 125,
-    "transaction_hash": "0x2222..."
+    "transaction_hash": "0x2222...",
+    "timestamp": "2025-11-27T03:45:12.000Z"
   }
 ]
 ```
+
+**Note:** Returns audit trail for a specific certificate sorted chronologically (oldest first). Timestamps are fetched from blockchain blocks and returned in ISO format.
+
+---
+
+## 15a. Get All Audit Logs (System-Wide)
+
+**Endpoint:** `GET /api/blockchain/certificates/audit-logs`
+
+**Auth:** JWT Required (any authenticated user)
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /api/blockchain/certificates/audit-logs`
+
+**Response:**
+
+```json
+[
+  {
+    "action": "ISSUED",
+    "cert_hash": "0xefgh5678...",
+    "student_id": "22-46735-1",
+    "version": 1,
+    "issuer": "0x1234...",
+    "block_number": 130,
+    "transaction_hash": "0x9999...",
+    "timestamp": "2025-11-28T10:30:00.000Z"
+  },
+  {
+    "action": "REVOKED",
+    "cert_hash": "0xabcd1234...",
+    "revoked_by": "0x08Bd40C733...",
+    "block_number": 124,
+    "transaction_hash": "0x1111...",
+    "timestamp": "2025-11-27T02:15:30.000Z"
+  },
+  {
+    "action": "ISSUED",
+    "cert_hash": "0xabcd1234...",
+    "student_id": "22-46734-1",
+    "version": 1,
+    "issuer": "0x08Bd40C733...",
+    "block_number": 123,
+    "transaction_hash": "0x5678...",
+    "timestamp": "2025-11-27T01:28:41.000Z"
+  }
+]
+```
+
+**Note:** Returns ALL certificate events across the entire system sorted by timestamp (newest first). Useful for system-wide monitoring and compliance auditing. Issued events include `student_id` and `version` for context.
+
+---
+
+## 15b. Get User Audit Logs
+
+**Endpoint:** `GET /api/blockchain/certificates/audit-logs/user/:wallet_address`
+
+**Auth:** JWT Required (any authenticated user)
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /api/blockchain/certificates/audit-logs/user/0x08Bd40C733...`
+
+**Response:**
+
+```json
+[
+  {
+    "action": "ISSUED",
+    "cert_hash": "0xefgh5678...",
+    "student_id": "22-46735-1",
+    "version": 1,
+    "block_number": 130,
+    "transaction_hash": "0x9999...",
+    "timestamp": "2025-11-28T10:30:00.000Z"
+  },
+  {
+    "action": "REVOKED",
+    "cert_hash": "0xabcd1234...",
+    "block_number": 124,
+    "transaction_hash": "0x1111...",
+    "timestamp": "2025-11-27T02:15:30.000Z"
+  },
+  {
+    "action": "ISSUED",
+    "cert_hash": "0xabcd1234...",
+    "student_id": "22-46734-1",
+    "version": 1,
+    "block_number": 123,
+    "transaction_hash": "0x5678...",
+    "timestamp": "2025-11-27T01:28:41.000Z"
+  }
+]
+```
+
+**Note:** Returns all certificate actions performed by a specific user (issued, revoked, reactivated) sorted by timestamp (newest first). Perfect for individual accountability and activity tracking.
 
 ---
 
