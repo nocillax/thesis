@@ -2,23 +2,29 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, History, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  User as UserIcon,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   auditLogsAPI,
   AuditLogEntry,
   PaginatedAuditLogs,
 } from "@/lib/api/auditLogs";
+import { usersAPI } from "@/lib/api/users";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { UserAuditTable } from "@/components/audit/UserAuditTable";
-import { truncateAddress } from "@/lib/utils/format";
+import { UserProfileCard } from "@/components/users/UserProfileCard";
 
 const ITEMS_PER_PAGE = 20;
 
-export default function UserAuditLogsPage({
+export default function UserProfilePage({
   params,
 }: {
   params: Promise<{ wallet_address: string }>;
@@ -27,18 +33,36 @@ export default function UserAuditLogsPage({
   const router = useRouter();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError, error } = useQuery({
+  // Fetch user details
+  const {
+    data: userData,
+    isLoading: userLoading,
+    isError: userError,
+    error: userErrorMsg,
+  } = useQuery({
+    queryKey: ["user", wallet_address],
+    queryFn: () => usersAPI.getByAddress(wallet_address),
+  });
+
+  // Fetch audit logs
+  const {
+    data: logsData,
+    isLoading: logsLoading,
+    isError: logsError,
+    error: logsErrorMsg,
+  } = useQuery({
     queryKey: ["audit-logs", "user", wallet_address, page],
     queryFn: () => auditLogsAPI.getByUser(wallet_address, page, ITEMS_PER_PAGE),
   });
 
-  const isPaginated = data && typeof data === "object" && "meta" in data;
+  const isPaginated =
+    logsData && typeof logsData === "object" && "meta" in logsData;
   const logs: AuditLogEntry[] = isPaginated
-    ? (data as PaginatedAuditLogs).data
-    : (data as AuditLogEntry[] | undefined) || [];
-  const meta = isPaginated ? (data as PaginatedAuditLogs).meta : undefined;
+    ? (logsData as PaginatedAuditLogs).data
+    : (logsData as AuditLogEntry[] | undefined) || [];
+  const meta = isPaginated ? (logsData as PaginatedAuditLogs).meta : undefined;
 
-  if (isLoading) {
+  if (userLoading || logsLoading) {
     return (
       <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <LoadingSpinner size="lg" />
@@ -46,10 +70,26 @@ export default function UserAuditLogsPage({
     );
   }
 
-  if (isError) {
+  if (userError) {
     return (
       <div className="container py-8">
-        <ErrorMessage message={error?.message || "Failed to load audit logs"} />
+        <ErrorMessage
+          message={userErrorMsg?.message || "Failed to load user details"}
+        />
+        <Button onClick={() => router.back()} className="mt-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (logsError) {
+    return (
+      <div className="container py-8">
+        <ErrorMessage
+          message={logsErrorMsg?.message || "Failed to load audit logs"}
+        />
         <Button onClick={() => router.back()} className="mt-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
@@ -61,35 +101,32 @@ export default function UserAuditLogsPage({
   return (
     <div className="container py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <Button variant="ghost" onClick={() => router.back()} size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-3xl font-bold mt-2 flex items-center gap-2">
-            <History className="h-8 w-8" />
-            User Audit Logs
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            All certificate actions performed by this user
-          </p>
-        </div>
+      <div className="mb-6">
+        <Button variant="ghost" onClick={() => router.back()} size="sm">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold mt-2 flex items-center gap-2">
+          <UserIcon className="h-8 w-8" />
+          User Profile
+        </h1>
       </div>
 
-      {/* Wallet Address */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Wallet Address</p>
-            <code className="text-xs bg-accent px-3 py-2 rounded border block overflow-x-auto">
-              {wallet_address}
-            </code>
-          </div>
-        </CardContent>
-      </Card>
+      {/* User Profile Card */}
+      {userData && (
+        <div className="mb-6">
+          <UserProfileCard
+            walletAddress={userData.wallet_address}
+            username={userData.username}
+            email={userData.email}
+            registrationDate={userData.registration_date}
+            isAuthorized={userData.is_authorized}
+            isAdmin={userData.is_admin}
+          />
+        </div>
+      )}
 
-      {/* Audit Logs Table */}
+      {/* Action History Section */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

@@ -885,67 +885,78 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
-  async searchCertificates(query: string) {
+  async enhancedSearch(query: string) {
     if (!query || query.trim().length === 0) {
-      return { exact: null, suggestions: [] };
+      return { studentIds: [], certificates: [], users: [] };
     }
 
-    const searchQuery = query.trim().toLowerCase();
+    const searchQuery = query.trim();
 
     try {
-      // Try exact match first using blockchain index
-      const exactHash =
-        await this.certificateContract.student_to_active_cert_hash(
-          searchQuery.toUpperCase(),
-        );
-
-      let exactMatch: string | null = null;
-      if (exactHash && exactHash !== ethers.ZeroHash) {
-        try {
-          const cert = await this.verifyCertificate(exactHash);
-          exactMatch = cert.student_id;
-        } catch (error) {
-          console.warn(
-            'Exact match hash exists but certificate retrieval failed',
-          );
-        }
-      }
-
-      // Get all certificates for fuzzy matching
+      // Search Student IDs (substring matching, case-insensitive)
       const allCerts = await this.getAllCertificates();
-
-      // Extract unique student IDs
       const uniqueStudentIds = Array.from(
         new Set(allCerts.map((cert) => cert.student_id)),
       );
+      const matchingStudentIds = uniqueStudentIds
+        .filter((studentId) =>
+          studentId.toLowerCase().includes(searchQuery.toLowerCase()),
+        )
+        .slice(0, 5); // Limit to 5 results
 
-      // Calculate Levenshtein distance for each unique student_id
-      const matches = uniqueStudentIds
-        .filter((studentId) => studentId.toLowerCase() !== searchQuery) // Exclude exact match from suggestions
-        .map((studentId) => ({
-          studentId,
-          distance: levenshtein.get(searchQuery, studentId.toLowerCase()),
-          // Also check if query is a substring
-          isSubstring: studentId.toLowerCase().includes(searchQuery),
+      // Search Certificate Hashes (exact matching, case-insensitive)
+      const matchingCertificates = allCerts
+        .filter(
+          (cert) => cert.cert_hash.toLowerCase() === searchQuery.toLowerCase(),
+        )
+        .map((cert) => ({
+          cert_hash: cert.cert_hash,
+          student_id: cert.student_id,
+          is_active: !cert.is_revoked,
         }))
-        .filter((item) => item.distance <= 3 || item.isSubstring) // Max distance of 3 or contains substring
-        .sort((a, b) => {
-          // Prioritize substring matches
-          if (a.isSubstring && !b.isSubstring) return -1;
-          if (!a.isSubstring && b.isSubstring) return 1;
-          // Then sort by distance
-          return a.distance - b.distance;
-        })
-        .slice(0, 5) // Top 5 suggestions
-        .map((item) => item.studentId);
+        .slice(0, 5); // Limit to 5 results
+
+      // Search Wallet Addresses (exact matching, case-insensitive)
+      // Get all registered users
+      const userRegisteredFilter =
+        this.userRegistryContract.filters.UserRegistered();
+      const userEvents =
+        await this.userRegistryContract.queryFilter(userRegisteredFilter);
+
+      const matchingUsers: Array<{
+        wallet_address: string;
+        username: string;
+        email: string;
+        is_authorized: boolean;
+      }> = [];
+      for (const event of userEvents) {
+        if ('args' in event) {
+          const walletAddress = event.args.wallet_address;
+          if (walletAddress.toLowerCase() === searchQuery.toLowerCase()) {
+            try {
+              const user =
+                await this.userRegistryContract.getUser(walletAddress);
+              matchingUsers.push({
+                wallet_address: walletAddress,
+                username: user.username,
+                email: user.email,
+                is_authorized: user.is_authorized,
+              });
+            } catch (error) {
+              console.warn('Failed to get user details:', walletAddress);
+            }
+          }
+        }
+      }
 
       return {
-        exact: exactMatch,
-        suggestions: matches,
+        studentIds: matchingStudentIds,
+        certificates: matchingCertificates,
+        users: matchingUsers.slice(0, 5), // Limit to 5 results
       };
     } catch (error) {
-      console.error('Search error:', error);
-      throw new BadRequestException('Failed to search certificates');
+      console.error('Enhanced search error:', error);
+      throw new BadRequestException('Failed to perform search');
     }
   }
 

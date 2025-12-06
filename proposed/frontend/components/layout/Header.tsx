@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, LogOut, ShieldCheck, Copy } from "lucide-react";
+import {
+  Menu,
+  LogOut,
+  ShieldCheck,
+  Copy,
+  User as UserIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +24,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { truncateAddress } from "@/lib/utils/format";
 import { SearchCommand } from "./SearchCommand";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 export function Header() {
   const pathname = usePathname();
@@ -91,22 +97,24 @@ export function Header() {
                       {truncateAddress(user.wallet_address)}
                     </span>
                   </div>
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                      {user.username.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    walletAddress={user.wallet_address}
+                    username={user.username}
+                    isAdmin={user.is_admin}
+                    size="sm"
+                  />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 p-0">
                 {/* Profile Card Header */}
                 <div className="p-4 pb-3 bg-muted/50">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12 border-2 border-background">
-                      <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
-                        {user.username.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                      walletAddress={user.wallet_address}
+                      username={user.username}
+                      isAdmin={user.is_admin}
+                      size="md"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-base mb-0.5">
                         {user.username}
@@ -145,6 +153,18 @@ export function Header() {
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
                   </div>
+                </div>
+
+                <DropdownMenuSeparator className="my-0" />
+
+                {/* My Profile */}
+                <div className="p-2">
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={`/users/${user.wallet_address}`}>
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      My Profile
+                    </Link>
+                  </DropdownMenuItem>
                 </div>
 
                 <DropdownMenuSeparator className="my-0" />

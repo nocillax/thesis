@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { FileCheck, Ban, RefreshCw } from "lucide-react";
 import {
   Table,
@@ -35,13 +35,13 @@ const getActionIcon = (action: string) => {
 const getActionBadgeVariant = (action: string) => {
   switch (action) {
     case "ISSUED":
-      return "default";
+      return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800";
     case "REVOKED":
-      return "destructive";
+      return "bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800";
     case "REACTIVATED":
-      return "secondary";
+      return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-800";
     default:
-      return "default";
+      return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800";
   }
 };
 
@@ -68,7 +68,10 @@ export function CertificateAuditTable({ logs }: CertificateAuditTableProps) {
             logs.map((log, index) => (
               <TableRow key={`${log.transaction_hash}-${index}`}>
                 <TableCell>
-                  <Badge variant={getActionBadgeVariant(log.action)}>
+                  <Badge
+                    variant="outline"
+                    className={getActionBadgeVariant(log.action)}
+                  >
                     {log.action}
                   </Badge>
                 </TableCell>
@@ -85,9 +88,7 @@ export function CertificateAuditTable({ logs }: CertificateAuditTableProps) {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(log.timestamp), {
-                      addSuffix: true,
-                    })}
+                    {format(new Date(log.timestamp), "hh:mm a")}
                   </span>
                 </TableCell>
               </TableRow>

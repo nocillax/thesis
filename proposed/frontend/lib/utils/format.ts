@@ -13,10 +13,14 @@ export function truncateHash(hash: string): string {
 }
 
 // Format date to human-readable string
-export function formatDate(dateString: string | Date): string {
+export function formatDate(dateString: string | Date | number): string {
   if (!dateString) return "";
   const date =
-    typeof dateString === "string" ? new Date(dateString) : dateString;
+    typeof dateString === "string"
+      ? new Date(dateString)
+      : typeof dateString === "number"
+      ? new Date(dateString)
+      : dateString;
   return format(date, "MMM dd, yyyy");
 }
 

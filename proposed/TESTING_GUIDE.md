@@ -363,9 +363,9 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-## 9. Search Certificates (Fuzzy Match)
+## 9. Enhanced Search (Student IDs, Certificate Hashes, Wallet Addresses)
 
-**Endpoint:** `GET /api/blockchain/certificates/search`
+**Endpoint:** `GET /api/blockchain/search`
 
 **Auth:** JWT Required (any authenticated user)
 
@@ -377,65 +377,49 @@ Authorization: Bearer YOUR_TOKEN
 
 **Query Parameters:**
 
-- `q` - Search query (student ID)
+- `q` - Search query (Student ID, Certificate Hash, or Wallet Address)
 
 **Example:**
 
 ```bash
-GET /api/blockchain/certificates/search?q=22-467
+GET /api/blockchain/search?q=22-467
 ```
 
 **Response:**
 
 ```json
 {
-  "exact": {
-    "cert_hash": "0xabcd1234...",
-    "student_id": "22-46734-1",
-    "version": 1,
-    "student_name": "Alice Johnson",
-    "degree": "Bachelor of Science",
-    "program": "Computer Science",
-    "cgpa": 3.85,
-    "issuing_authority": "AIUB",
-    "issuer": "0x123...",
-    "issuer_name": "Admin User",
-    "is_revoked": false,
-    "signature": "0x...",
-    "issuance_date": "2025-12-06T08:30:00Z"
-  },
-  "suggestions": [
+  "studentIds": ["22-46734-1", "22-46735-1", "22-46790-1"],
+  "certificates": [
     {
-      "cert_hash": "0xef567890...",
-      "student_id": "22-46735-1",
-      "student_name": "Bob Smith",
-      "degree": "Bachelor of Science",
-      "program": "Computer Science",
-      "cgpa": 3.72,
-      "is_revoked": false
-      // ... other fields
-    },
-    {
-      "cert_hash": "0x12345678...",
+      "cert_hash": "0xabcd1234...",
       "student_id": "21-46734-1",
-      "student_name": "Carol White",
-      "degree": "Bachelor of Science",
-      "program": "Computer Science",
-      "cgpa": 3.91,
-      "is_revoked": false
-      // ... other fields
+      "is_active": true
+    }
+  ],
+  "users": [
+    {
+      "wallet_address": "0x1234...",
+      "username": "john_doe",
+      "email": "john@university.edu",
+      "is_authorized": true
     }
   ]
 }
 ```
 
+**Search Logic:**
+
+- **Student IDs**: Substring matching (case-insensitive), returns up to 5 matches
+- **Certificate Hashes**: Exact matching (case-insensitive), returns matching certificate details
+- **Wallet Addresses**: Exact matching (case-insensitive), returns user details
+
 **Notes:**
 
-- Returns exact match (if found) using blockchain's indexed lookup
-- Returns up to 5 similar student IDs using fuzzy matching (Levenshtein distance ≤ 3)
-- Prioritizes substring matches over edit distance
+- Returns grouped results by category (studentIds, certificates, users)
+- Empty categories are not displayed in the response (only categories with results are shown)
 - Requires authentication (any logged-in user)
-- Efficient: Only returns matching certificates, not all 10,000+
+- Efficient: Only returns matching results from all three data sources
 
 ---
 

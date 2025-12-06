@@ -50,13 +50,13 @@ const getActionIcon = (action: string) => {
 const getActionBadgeVariant = (action: string) => {
   switch (action) {
     case "ISSUED":
-      return "default";
+      return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800";
     case "REVOKED":
-      return "destructive";
+      return "bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800";
     case "REACTIVATED":
-      return "secondary";
+      return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-800";
     default:
-      return "default";
+      return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800";
   }
 };
 
@@ -196,8 +196,10 @@ export default function DashboardPage() {
                       className="flex items-center justify-between text-xs"
                     >
                       <Badge
-                        variant={getActionBadgeVariant(log.action)}
-                        className="text-[10px] py-0"
+                        variant="outline"
+                        className={`${getActionBadgeVariant(
+                          log.action
+                        )} text-[10px] py-0`}
                       >
                         {log.action}
                       </Badge>
@@ -214,7 +216,7 @@ export default function DashboardPage() {
                     className="w-full mt-2"
                     asChild
                   >
-                    <Link href={`/audit-logs/user/${user.wallet_address}`}>
+                    <Link href={`/users/${user.wallet_address}`}>
                       View All
                       <ArrowRight className="ml-2 h-3 w-3" />
                     </Link>
@@ -295,8 +297,10 @@ export default function DashboardPage() {
                       className="flex items-center justify-between text-xs"
                     >
                       <Badge
-                        variant={getActionBadgeVariant(log.action)}
-                        className="text-[10px] py-0"
+                        variant="outline"
+                        className={`${getActionBadgeVariant(
+                          log.action
+                        )} text-[10px] py-0`}
                       >
                         {log.action}
                       </Badge>
@@ -313,7 +317,7 @@ export default function DashboardPage() {
                     className="w-full mt-2"
                     asChild
                   >
-                    <Link href={`/audit-logs/user/${user.wallet_address}`}>
+                    <Link href={`/users/${user.wallet_address}`}>
                       View All
                       <ArrowRight className="ml-2 h-3 w-3" />
                     </Link>

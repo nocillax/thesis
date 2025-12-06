@@ -77,12 +77,25 @@ export const certificatesAPI = {
     return response.data;
   },
 
-  // Search certificates
+  // Enhanced search across student IDs, cert hashes, and wallet addresses
   search: async (
     query: string
-  ): Promise<{ exact: string | null; suggestions: string[] }> => {
+  ): Promise<{
+    studentIds: string[];
+    certificates: Array<{
+      cert_hash: string;
+      student_id: string;
+      is_active: boolean;
+    }>;
+    users: Array<{
+      wallet_address: string;
+      username: string;
+      email: string;
+      is_authorized: boolean;
+    }>;
+  }> => {
     const response = await apiClient.get(
-      `/api/blockchain/certificates/search?q=${encodeURIComponent(query)}`
+      `/api/blockchain/search?q=${encodeURIComponent(query)}`
     );
     return response.data;
   },

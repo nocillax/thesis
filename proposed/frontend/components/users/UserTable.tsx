@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -44,6 +45,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/common/CopyButton";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { formatDate, truncateAddress } from "@/lib/utils/format";
 import {
   useBulkRevokeUsers,
@@ -93,16 +95,17 @@ export function UserTable({ data }: UserTableProps) {
       enableHiding: false,
     },
     {
-      accessorKey: "wallet_address",
-      header: "Wallet Address",
+      id: "avatar",
+      header: "",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <code className="text-xs bg-accent px-2 py-1 rounded border">
-            {truncateAddress(row.original.wallet_address)}
-          </code>
-          <CopyButton text={row.original.wallet_address} label="Copy Address" />
-        </div>
+        <UserAvatar
+          walletAddress={row.original.wallet_address}
+          username={row.original.username}
+          isAdmin={row.original.is_admin}
+          size="sm"
+        />
       ),
+      enableSorting: false,
     },
     {
       accessorKey: "username",
@@ -127,7 +130,12 @@ export function UserTable({ data }: UserTableProps) {
       },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="font-medium">{row.original.username}</span>
+          <Link
+            href={`/users/${row.original.wallet_address}`}
+            className="font-medium hover:underline"
+          >
+            {row.original.username}
+          </Link>
           {row.original.is_admin && (
             <Badge
               variant="outline"
@@ -152,20 +160,16 @@ export function UserTable({ data }: UserTableProps) {
       ),
     },
     {
-      id: "logs",
-      header: "Logs",
+      accessorKey: "wallet_address",
+      header: "Wallet Address",
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            router.push(`/audit-logs/user/${row.original.wallet_address}`)
-          }
-        >
-          <History className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <code className="text-xs bg-accent px-2 py-1 rounded border">
+            {truncateAddress(row.original.wallet_address)}
+          </code>
+          <CopyButton text={row.original.wallet_address} label="Copy Address" />
+        </div>
       ),
-      enableSorting: false,
     },
   ];
 

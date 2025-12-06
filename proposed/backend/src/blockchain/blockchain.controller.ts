@@ -203,11 +203,11 @@ export class BlockchainController {
     };
   }
 
-  // Search endpoint must come before specific routes
+  // Enhanced search endpoint - searches student IDs, cert hashes, and wallet addresses
   @UseGuards(AuthGuard('jwt'))
-  @Get('certificates/search')
-  async searchCertificates(@Query('q') query: string) {
-    return this.blockchainService.searchCertificates(query);
+  @Get('search')
+  async enhancedSearch(@Query('q') query: string) {
+    return this.blockchainService.enhancedSearch(query);
   }
 
   // PDF routes must come before :cert_hash routes
