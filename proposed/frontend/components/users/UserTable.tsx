@@ -128,9 +128,9 @@ export function UserTable({ data }: UserTableProps) {
           {row.original.is_admin && (
             <Badge
               variant="outline"
-              className="bg-primary/10 text-primary border-primary"
+              className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
             >
-              <Crown className="h-3 w-3 mr-1" />
+              <ShieldCheck className="h-3 w-3 mr-1" />
               Admin
             </Badge>
           )}
@@ -144,7 +144,9 @@ export function UserTable({ data }: UserTableProps) {
     {
       accessorKey: "is_authorized",
       header: "Status",
-      cell: ({ row }) => <StatusBadge isActive={row.original.is_authorized} />,
+      cell: ({ row }) => (
+        <StatusBadge isActive={row.original.is_authorized} type="user" />
+      ),
     },
   ];
 
@@ -223,12 +225,10 @@ export function UserTable({ data }: UserTableProps) {
                 size="sm"
                 onClick={handleBulkRevoke}
                 disabled={selectedCount === 0 || isAnyOperationPending}
-                className="flex items-center gap-2"
               >
-                <Lock className="h-4 w-4" />
-                {selectedCount > 0 && (
-                  <span className="text-xs">({selectedCount})</span>
-                )}
+                <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
+                  <Lock className="h-3 w-3 text-red-700 dark:text-red-300" />
+                </div>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Revoke Access</TooltipContent>
@@ -241,12 +241,10 @@ export function UserTable({ data }: UserTableProps) {
                 size="sm"
                 onClick={handleBulkReactivate}
                 disabled={selectedCount === 0 || isAnyOperationPending}
-                className="flex items-center gap-2"
               >
-                <Unlock className="h-4 w-4" />
-                {selectedCount > 0 && (
-                  <span className="text-xs">({selectedCount})</span>
-                )}
+                <div className="rounded-full bg-green-100 dark:bg-green-900 p-1">
+                  <Unlock className="h-3 w-3 text-green-700 dark:text-green-300" />
+                </div>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Authorize Access</TooltipContent>
@@ -259,15 +257,13 @@ export function UserTable({ data }: UserTableProps) {
                 size="sm"
                 onClick={handleBulkGrantAdmin}
                 disabled={selectedCount === 0 || isAnyOperationPending}
-                className="flex items-center gap-2"
               >
-                <ShieldCheck className="h-4 w-4" />
-                {selectedCount > 0 && (
-                  <span className="text-xs">({selectedCount})</span>
-                )}
+                <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-1">
+                  <ShieldCheck className="h-3 w-3 text-blue-700 dark:text-blue-300" />
+                </div>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Grant Admin</TooltipContent>
+            <TooltipContent>Grant Admin Access</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -277,15 +273,13 @@ export function UserTable({ data }: UserTableProps) {
                 size="sm"
                 onClick={handleBulkRevokeAdmin}
                 disabled={selectedCount === 0 || isAnyOperationPending}
-                className="flex items-center gap-2"
               >
-                <ShieldX className="h-4 w-4" />
-                {selectedCount > 0 && (
-                  <span className="text-xs">({selectedCount})</span>
-                )}
+                <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-1">
+                  <ShieldX className="h-3 w-3 text-gray-700 dark:text-gray-300" />
+                </div>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Revoke Admin</TooltipContent>
+            <TooltipContent>Revoke Admin Access</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 

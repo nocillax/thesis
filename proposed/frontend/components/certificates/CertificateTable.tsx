@@ -275,19 +275,13 @@ export function CertificateTable({ data }: CertificateTableProps) {
                 size="sm"
                 onClick={handleBulkRevoke}
                 disabled={selectedCount === 0 || isRevoking}
-                className="flex items-center gap-2"
               >
-                <Ban className="h-4 w-4" />
-                {selectedCount > 0 && (
-                  <span className="text-xs">({selectedCount})</span>
-                )}
+                <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
+                  <Ban className="h-3 w-3 text-red-700 dark:text-red-300" />
+                </div>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              {selectedCount === 0
-                ? "Revoke certificates"
-                : `Revoke ${selectedCount} certificate(s)`}
-            </TooltipContent>
+            <TooltipContent>Revoke Certificate</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -297,19 +291,15 @@ export function CertificateTable({ data }: CertificateTableProps) {
                 size="sm"
                 onClick={handleBulkReactivate}
                 disabled={selectedCount !== 1 || isReactivating}
-                className="flex items-center gap-2"
               >
-                <CheckCircle className="h-4 w-4" />
-                {selectedCount > 0 && (
-                  <span className="text-xs">({selectedCount})</span>
-                )}
+                <div className="rounded-full bg-green-100 dark:bg-green-900 p-1">
+                  <CheckCircle className="h-3 w-3 text-green-700 dark:text-green-300" />
+                </div>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {selectedCount === 0
-                ? "Reactivate certificate"
-                : selectedCount === 1
-                ? "Reactivate certificate"
+              {selectedCount === 1
+                ? "Reactivate Certificate"
                 : "Select only 1 certificate to reactivate"}
             </TooltipContent>
           </Tooltip>

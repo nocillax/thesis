@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, LogOut, User, Shield } from "lucide-react";
+import {
+  Menu,
+  LogOut,
+  User,
+  ShieldCheck,
+  Copy,
+  Unlock,
+  Lock,
+} from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,6 +26,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { truncateAddress } from "@/lib/utils/format";
 import { SearchCommand } from "./SearchCommand";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export function Header() {
   const pathname = usePathname();
@@ -75,6 +85,7 @@ export function Header() {
 
         {/* User Menu or Login Button */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -95,47 +106,80 @@ export function Header() {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-80 p-0">
+                {/* Profile Card Header */}
+                <div className="p-4 pb-3 bg-muted/50">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-base">
+                    <Avatar className="h-12 w-12 border-2 border-background">
+                      <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
                         {user.username.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <span className="font-semibold">{user.username}</span>
-                      <span className="text-xs font-normal text-muted-foreground">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-base mb-0.5">
+                        {user.username}
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-2">
                         {user.email}
-                      </span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {user.is_admin && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            <ShieldCheck className="h-3 w-3 mr-1" />
+                            Admin
+                          </span>
+                        )}
+                        {user.is_authorized ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            <Unlock className="h-3 w-3 mr-1" />
+                            Authorized
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            <Lock className="h-3 w-3 mr-1" />
+                            Not Authorized
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => router.push("/profile")}
-                  className="cursor-pointer"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  My Profile
-                </DropdownMenuItem>
-                {user.is_admin && (
+                </div>
+
+                {/* Wallet Address Section */}
+                <div className="px-4 py-3 border-t">
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5">
+                    Wallet Address
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono overflow-hidden text-ellipsis">
+                      {truncateAddress(user.wallet_address)}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.wallet_address);
+                        toast.success("Wallet address copied!");
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator className="my-0" />
+
+                {/* Logout Button */}
+                <div className="p-2">
                   <DropdownMenuItem
-                    onClick={() => router.push("/users")}
-                    className="cursor-pointer"
+                    onClick={handleLogout}
+                    className="text-destructive focus:text-destructive cursor-pointer"
                   >
-                    <Shield className="mr-2 h-4 w-4" />
-                    User Management
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="text-destructive focus:text-destructive cursor-pointer"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

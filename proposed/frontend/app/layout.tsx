@@ -3,15 +3,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export default function RootLayout({
   children,
@@ -39,24 +34,31 @@ export default function RootLayout({
           content="Secure blockchain-based certificate issuance and verification system"
         />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <QueryClientProvider client={queryClient}>
-          <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
-          <Toaster
-            richColors
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: "hsl(var(--background))",
-                border: "1px solid hsl(var(--border))",
-              },
-            }}
-          />
-        </QueryClientProvider>
+      <body className="font-sans antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryClientProvider client={queryClient}>
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+            <Toaster
+              richColors
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                },
+              }}
+            />
+          </QueryClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
