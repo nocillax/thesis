@@ -10,7 +10,7 @@ export class AuthService {
     try {
       // Verify the signature
       const recoveredAddress = ethers.verifyMessage(message, signature);
-      
+
       if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
         throw new UnauthorizedException('Invalid signature');
       }
@@ -23,11 +23,17 @@ export class AuthService {
     }
   }
 
-  generateToken(walletAddress: string, username: string, isAdmin: boolean) {
+  generateToken(
+    walletAddress: string,
+    username: string,
+    isAdmin: boolean,
+    isAuthorized: boolean,
+  ) {
     const payload = {
       walletAddress,
       username,
       isAdmin,
+      isAuthorized,
     };
 
     return {

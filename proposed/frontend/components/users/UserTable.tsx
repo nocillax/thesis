@@ -317,7 +317,7 @@ export function UserTable({ data }: UserTableProps) {
                   data-state={row.getIsSelected() && "selected"}
                   className={
                     !row.original.is_authorized
-                      ? "bg-destructive/10 hover:bg-destructive/20 opacity-75"
+                      ? "bg-muted text-muted-foreground hover:bg-muted"
                       : "hover:bg-muted/50"
                   }
                 >

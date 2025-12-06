@@ -88,7 +88,7 @@ const signature = await wallet.signMessage(message);
 }
 ```
 
-**Note:** Backend verifies signature matches wallet address, queries blockchain for user data (username, is_admin, is_authorized), generates JWT token.
+**Note:** Backend verifies signature matches wallet address, queries blockchain for user data (username, is_admin, is_authorized). **Only authorized users can login** - if `is_authorized=false`, login will fail. JWT token expires after 30 minutes.
 
 ---
 
@@ -130,7 +130,7 @@ Authorization: Bearer YOUR_TOKEN
 }
 ```
 
-**Note:** Backend generates a new wallet, registers on blockchain with `is_authorized=true`. Save the `private_key` and import it to Rabby wallet.
+**Note:** Backend generates a new wallet, registers on blockchain with `is_authorized=true`. Save the `private_key` and import it to Rabby wallet. **User will be able to login immediately** since they are authorized by default.
 
 ---
 
@@ -275,7 +275,7 @@ Authorization: Bearer YOUR_TOKEN
 }
 ```
 
-**Note:** Sets `is_authorized=false` on blockchain. User can no longer issue certificates.
+**Note:** Sets `is_authorized=false` on blockchain. **User will be immediately unable to login** - their existing JWT remains valid until expiry (30 minutes), but any write operations will fail due to real-time blockchain authorization checks.
 
 ---
 
@@ -303,7 +303,7 @@ Authorization: Bearer YOUR_TOKEN
 }
 ```
 
-**Note:** Sets `is_authorized=true` on blockchain. User can issue certificates again.
+**Note:** Sets `is_authorized=true` on blockchain. **User can now login again** and perform all authorized actions including issuing certificates.
 
 ---
 
@@ -367,15 +367,17 @@ Authorization: Bearer YOUR_TOKEN
 
 **Endpoint:** `GET /api/blockchain/certificates/search`
 
-**Auth:** Admin JWT Required
+**Auth:** JWT Required (any authenticated user)
 
-**Query Parameters:**
-
-- `q` - Search query (student ID)
+**Headers:**
 
 ```
 Authorization: Bearer YOUR_TOKEN
 ```
+
+**Query Parameters:**
+
+- `q` - Search query (student ID)
 
 **Example:**
 
@@ -432,7 +434,7 @@ GET /api/blockchain/certificates/search?q=22-467
 - Returns exact match (if found) using blockchain's indexed lookup
 - Returns up to 5 similar student IDs using fuzzy matching (Levenshtein distance ≤ 3)
 - Prioritizes substring matches over edit distance
-- Works without authentication (public search)
+- Requires authentication (any logged-in user)
 - Efficient: Only returns matching certificates, not all 10,000+
 
 ---
@@ -529,7 +531,7 @@ GET /api/blockchain/certificates?status=revoked
 
 **Endpoint:** `POST /api/blockchain/certificates`
 
-**Auth:** Authorized User JWT Required (must have `is_authorized=true`, admin status not required)
+**Auth:** Authorized User JWT Required (must have `is_authorized=true` - checked in real-time from blockchain before transaction)
 
 **Headers:**
 
@@ -565,6 +567,7 @@ Authorization: Bearer YOUR_TOKEN
 
 **Important Notes:**
 
+- **Authorization checked from blockchain before transaction:** Even if JWT is valid, user must be authorized at transaction time
 - **No certificate_number needed!** Student ID is the unique identifier
 - **Automatic versioning:** First certificate = v1, second = v2, etc.
 - **Must revoke active version first:** If student has an active certificate, you must revoke it before issuing a new version
@@ -605,7 +608,7 @@ Authorization: Bearer YOUR_TOKEN
 
 **Endpoint:** `PATCH /api/blockchain/certificates/:cert_hash/revoke`
 
-**Auth:** Authorized User JWT Required (must have `is_authorized=true`, admin status not required)
+**Auth:** Authorized User JWT Required (must have `is_authorized=true` - checked in real-time from blockchain before transaction)
 
 **Headers:**
 
@@ -632,7 +635,7 @@ Authorization: Bearer YOUR_TOKEN
 
 **Endpoint:** `PATCH /api/blockchain/certificates/:cert_hash/reactivate`
 
-**Auth:** Authorized User JWT Required (must have `is_authorized=true`, admin status not required)
+**Auth:** Authorized User JWT Required (must have `is_authorized=true` - checked in real-time from blockchain before transaction)
 
 **Headers:**
 
@@ -703,7 +706,13 @@ Authorization: Bearer YOUR_TOKEN
 
 **Endpoint:** `GET /api/blockchain/certificates/student/:student_id/active`
 
-**Auth:** None (Public)
+**Auth:** JWT Required (any authenticated user)
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
 
 **Example:** `GET /api/blockchain/certificates/student/22-46734-1/active`
 
@@ -734,7 +743,13 @@ Authorization: Bearer YOUR_TOKEN
 
 **Endpoint:** `GET /api/blockchain/certificates/student/:student_id/versions`
 
-**Auth:** None (Public)
+**Auth:** JWT Required (any authenticated user)
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
 
 **Example:** `GET /api/blockchain/certificates/student/22-46734-1/versions`
 
@@ -787,6 +802,13 @@ UserRegistry: 0xECB550dE5c73e6690AB4521C03EC9D476617167E
 Admin Wallet: 0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73
 ```
 
-**Note:** All users (including admin) authenticate via cryptographic wallet signatures. No passwords, no database.
+**Note:** All users (including admin) authenticate via cryptographic wallet signatures. No passwords, no database. **JWT tokens expire after 30 minutes** - users must re-login by signing a new message. **Only authorized users (`is_authorized=true`) can login** - unauthorized users will be rejected during the login process.
+
+**Authorization Model:**
+
+- **Login**: Only authorized users can obtain JWT tokens
+- **Read operations**: JWT authentication only (fast)
+- **Write operations**: JWT + real-time blockchain authorization check (secure)
+- **Public endpoints**: Certificate verification is publicly accessible without authentication
 
 **Important:** When issuing certificates, the authenticated user's wallet address (from JWT) is recorded as the issuer, while the admin wallet pays for gas fees. This allows tracking individual issuers without funding multiple wallets.

@@ -251,11 +251,13 @@ export class BlockchainController {
     return this.blockchainService.verifyCertificate(cert_hash);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('certificates/student/:student_id/active')
   async getActiveCertificate(@Param('student_id') student_id: string) {
     return this.blockchainService.getActiveCertificateByStudentId(student_id);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('certificates/student/:student_id/versions')
   async getAllVersions(@Param('student_id') student_id: string) {
     return this.blockchainService.getAllVersionsByStudentId(student_id);

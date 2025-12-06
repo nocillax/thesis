@@ -86,7 +86,7 @@ export default function CertificatesPage() {
               : "No certificates found"}
           </p>
         </div>
-        {user?.is_admin && (
+        {user?.is_authorized && (
           <Button asChild>
             <Link href="/certificates/issue">
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -111,7 +111,7 @@ export default function CertificatesPage() {
           title="No certificates found"
           description="There are no certificates in the system yet."
           action={
-            user?.is_admin ? (
+            user?.is_authorized ? (
               <Button asChild>
                 <Link href="/certificates/issue">
                   <PlusCircle className="mr-2 h-4 w-4" />

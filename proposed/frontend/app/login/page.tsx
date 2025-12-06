@@ -33,10 +33,9 @@ export default function LoginPage() {
       const address = await connectWallet();
       if (!address) {
         toast.error("Failed to connect wallet");
+        setIsConnecting(false);
         return;
       }
-
-      toast.success(`Connected: ${address.slice(0, 6)}...${address.slice(-4)}`);
 
       // Step 2: Create login message
       const message = createLoginMessage();
@@ -45,6 +44,7 @@ export default function LoginPage() {
       const signature = await signMessage(message);
       if (!signature) {
         toast.error("Failed to sign message");
+        setIsConnecting(false);
         return;
       }
 
@@ -80,7 +80,20 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error("Wallet login error:", error);
-      toast.error(error.message || "Failed to connect wallet");
+
+      // Handle specific error cases
+      if (error.code === "ACTION_REJECTED" || error.code === 4001) {
+        toast.error("Login cancelled. Please try again.");
+      } else if (error.response?.data?.message) {
+        // Backend error with message
+        toast.error(error.response.data.message);
+      } else if (error.message?.includes("not authorized")) {
+        toast.error("Access denied: Your account is not authorized to login.");
+      } else if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error("Login failed. Please try again.");
+      }
     } finally {
       setIsConnecting(false);
     }

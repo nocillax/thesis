@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Menu,
-  LogOut,
-  User,
-  ShieldCheck,
-  Copy,
-  Unlock,
-  Lock,
-} from "lucide-react";
+import { Menu, LogOut, ShieldCheck, Copy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -122,25 +114,12 @@ export function Header() {
                       <div className="text-xs text-muted-foreground mb-2">
                         {user.email}
                       </div>
-                      <div className="flex gap-1.5">
-                        {user.is_admin && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            <ShieldCheck className="h-3 w-3 mr-1" />
-                            Admin
-                          </span>
-                        )}
-                        {user.is_authorized ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            <Unlock className="h-3 w-3 mr-1" />
-                            Authorized
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                            <Lock className="h-3 w-3 mr-1" />
-                            Not Authorized
-                          </span>
-                        )}
-                      </div>
+                      {user.is_admin && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          <ShieldCheck className="h-3 w-3 mr-1" />
+                          Admin
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

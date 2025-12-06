@@ -1,4 +1,14 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Inject, forwardRef } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  forwardRef,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { IsString } from 'class-validator';
 import { WalletLoginDto } from './wallet-login.dto';
@@ -23,18 +33,36 @@ export class AuthController {
     );
 
     if (!verified) {
-      throw new Error('Wallet verification failed');
+      throw new UnauthorizedException('Wallet verification failed');
     }
 
     // Get user from blockchain
-    const user = await this.blockchainService.getUserByWalletAddress(walletAddress);
+    try {
+      const user =
+        await this.blockchainService.getUserByWalletAddress(walletAddress);
 
-    // Check if user is authorized
-    if (!user.is_authorized) {
-      throw new Error('User is not authorized');
+      // Check if user is authorized
+      if (!user.is_authorized) {
+        throw new UnauthorizedException(
+          'Access denied: Your account is not authorized to login. Please contact an administrator.',
+        );
+      }
+
+      // Generate JWT token
+      return this.authService.generateToken(
+        walletAddress,
+        user.username,
+        user.is_admin,
+        user.is_authorized,
+      );
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // User not found in blockchain
+      throw new NotFoundException(
+        'User not registered. Please contact an administrator to register your wallet address.',
+      );
     }
-
-    // Generate JWT token
-    return this.authService.generateToken(walletAddress, user.username, user.is_admin);
   }
 }

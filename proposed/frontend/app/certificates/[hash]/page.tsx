@@ -108,7 +108,7 @@ export default function CertificateDetailPage({
             <span className="hidden sm:inline">Download PDF</span>
             <span className="sm:hidden">PDF</span>
           </Button>
-          {user?.is_admin && (
+          {user?.is_authorized && (
             <>
               {certificate.is_revoked ? (
                 <Button

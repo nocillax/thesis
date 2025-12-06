@@ -57,7 +57,7 @@ export default function IssueCertificatePage() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login");
-    } else if (!authLoading && user && !user.is_admin) {
+    } else if (!authLoading && user && !user.is_authorized) {
       router.push("/dashboard");
     }
   }, [isAuthenticated, user, authLoading, router]);
@@ -70,7 +70,7 @@ export default function IssueCertificatePage() {
     );
   }
 
-  if (!user.is_admin) {
+  if (!user.is_authorized) {
     return null;
   }
 

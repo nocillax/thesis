@@ -27,7 +27,14 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+    // Don't auto-redirect on 401 for login endpoint - let the login page handle it
+    const isLoginEndpoint = error.config?.url?.includes("/auth/wallet-login");
+
+    if (
+      error.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      !isLoginEndpoint
+    ) {
       // Token expired or invalid - redirect to login
       localStorage.removeItem("access_token");
       window.location.href = "/login";
