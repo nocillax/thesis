@@ -10,26 +10,46 @@ NestJS REST API server for blockchain certificate management with cryptographic 
 npm install
 ```
 
-### 2. Start Quorum Blockchain
+### 2. Install Quorum Network (First Time Only)
 
-Make sure Quorum network is running:
+If you don't have the `quorum-test-network` folder yet:
 
 ```bash
-cd ../quorum-test-network
+cd ../
+npx quorum-dev-quickstart
+```
+
+**Interactive prompts - choose:**
+
+- **Client:** `GoQuorum`
+- **Private transactions:** Press `Enter` (skip Tessera)
+- **Logging:** Press `Enter` (default: Loki)
+- **Chainlens monitoring:** `N` (No)
+- **Blockscout explorer:** `N` (No)
+- **Directory:** Press `Enter` (default: ./quorum-test-network)
+
+This creates the `quorum-test-network/` folder with 4 validators.
+
+### 3. Start Quorum Blockchain
+
+Make sure Docker Desktop is running and you have a verified docker account:
+
+```bash
+cd quorum-test-network
 ./run.sh
 ```
 
-### 3. Deploy Contracts & Seed Admin
+### 4. Deploy Contracts & Seed Admin
 
 ```bash
 cd ../blockchain
 npm install
-npx hardhat run scripts/seed-admin.js --network quorum
+npx hardhat run scripts/deploy-dev.js --network quorum
 ```
 
 Copy the contract addresses from output.
 
-### 4. Configure Environment
+### 5. Configure Environment
 
 ```bash
 cp .env.example .env
@@ -56,7 +76,7 @@ JWT_EXPIRES_IN=30m
 FRONTEND_URL=http://localhost:3000
 ```
 
-### 5. Start Server
+### 6. Start Server
 
 ```bash
 # Development
