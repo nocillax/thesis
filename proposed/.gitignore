@@ -9,10 +9,14 @@
 /blockchain/cache/
 /blockchain/typechain-types/
 
-# Environment variables (keep .env.example)
-*.env
+# Environment variables (keep .env.example and .env.*.example files)
+.env
+!.env.example
 .env.local
-.env.*.local
+!.env.local.example
+.env.production.local
+.env.development.local
+.env.test.local
 
 # Logs
 *.log
