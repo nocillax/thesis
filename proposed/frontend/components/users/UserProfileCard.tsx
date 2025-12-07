@@ -28,41 +28,45 @@ export function UserProfileCard({
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-4">
-            {/* Username and Admin Badge */}
+        <div className="space-y-6">
+          {/* Username Row with Avatar and Admin Badge */}
+          <div className="flex items-center gap-3">
+            <UserAvatar
+              walletAddress={walletAddress}
+              username={username}
+              isAdmin={isAdmin}
+              size="lg"
+            />
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <UserAvatar
-                  walletAddress={walletAddress}
-                  username={username}
-                  isAdmin={isAdmin}
-                  size="md"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">{username}</h2>
-                    {isAdmin && (
-                      <Badge
-                        variant="outline"
-                        className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                      >
-                        <ShieldCheck className="h-3.5 w-3.5 mr-1" />
-                        Admin
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold">{username}</h2>
+                {isAdmin && (
+                  <Badge
+                    variant="outline"
+                    className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                    Admin
+                  </Badge>
+                )}
               </div>
             </div>
+          </div>
 
+          {/* Info Grid - 2x2 */}
+          <div className="grid md:grid-cols-2 gap-4">
             {/* Email */}
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Email
               </p>
               <p className="font-semibold">{email}</p>
+            </div>
+
+            {/* Status */}
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Status</p>
+              <StatusBadge isActive={isAuthorized} type="user" />
             </div>
 
             {/* Registration Date */}
@@ -73,15 +77,6 @@ export function UserProfileCard({
               <p className="font-semibold">
                 {formatDate(registrationDate)}
               </p>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-4">
-            {/* Status */}
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Status</p>
-              <StatusBadge isActive={isAuthorized} type="user" />
             </div>
 
             {/* Wallet Address */}
