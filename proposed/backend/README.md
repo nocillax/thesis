@@ -52,6 +52,7 @@ Copy the contract addresses from output.
 ### 5. Configure Environment
 
 ```bash
+cd.. /backend
 cp .env.example .env
 ```
 
