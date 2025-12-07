@@ -58,8 +58,10 @@ export default function VerifyPage() {
           <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mx-auto mb-4">
             <Search className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Verify Certificate</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-4xl font-bold tracking-tight mb-2">
+            Verify Certificate
+          </h1>
+          <p className="text-muted-foreground font-medium">
             Enter the certificate hash to verify authenticity
           </p>
         </div>
@@ -147,7 +149,7 @@ export default function VerifyPage() {
                   </div>
                   <div>
                     <h3
-                      className={`text-xl font-semibold mb-1 ${
+                      className={`text-2xl font-bold tracking-tight mb-1 ${
                         certificate.is_revoked
                           ? "text-destructive"
                           : "text-green-600"
@@ -157,7 +159,7 @@ export default function VerifyPage() {
                         ? "Certificate Revoked"
                         : "Certificate Verified"}
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground font-medium">
                       {certificate.is_revoked
                         ? "This certificate has been revoked and is no longer valid"
                         : "This certificate is authentic and verified on the blockchain"}
@@ -169,96 +171,137 @@ export default function VerifyPage() {
 
             {/* Certificate Details */}
             <Card>
-              <CardHeader>
-                <CardTitle>Certificate Details</CardTitle>
-                <CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl font-bold">
+                  Certificate Details
+                </CardTitle>
+                <CardDescription className="font-medium">
                   Blockchain-verified academic certificate
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Student Name
-                    </p>
-                    <p className="font-medium">{certificate.student_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Student ID</p>
-                    <p className="font-mono font-medium">
-                      {certificate.student_id}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Degree</p>
-                    <p className="font-medium">{certificate.degree}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Program</p>
-                    <p className="font-medium">{certificate.program}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">CGPA</p>
-                    <p className="font-medium text-lg">
-                      {formatCGPA(certificate.cgpa)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Issuing Authority
-                    </p>
-                    <p className="font-medium">
-                      {certificate.issuing_authority}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Issuance Date
-                    </p>
-                    <p className="font-medium">
-                      {formatDate(certificate.issuance_date)}
-                    </p>
+              <CardContent className="space-y-6">
+                {/* Student Information */}
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-3">
+                    Student Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Student Name
+                      </p>
+                      <p className="font-semibold text-lg">
+                        {certificate.student_name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Student ID
+                      </p>
+                      <p className="font-mono font-semibold text-lg">
+                        {certificate.student_id}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 <Separator />
 
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Certificate Hash
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden">
-                        {truncateHash(certificate.cert_hash)}
-                      </code>
-                      <CopyButton
-                        text={certificate.cert_hash}
-                        label="Copy Hash"
-                      />
+                {/* Academic Details */}
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-3">
+                    Academic Details
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Degree
+                      </p>
+                      <p className="font-semibold">{certificate.degree}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Program
+                      </p>
+                      <p className="font-semibold">{certificate.program}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        CGPA
+                      </p>
+                      <p className="font-bold text-2xl text-foreground">
+                        {formatCGPA(certificate.cgpa)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Issuance Date
+                      </p>
+                      <p className="font-semibold">
+                        {formatDate(certificate.issuance_date)}
+                      </p>
                     </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Issuer</p>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden">
-                        {certificate.issuer_name} ({certificate.issuer})
-                      </code>
-                      <CopyButton
-                        text={certificate.issuer}
-                        label="Copy Address"
-                      />
+                <Separator />
+
+                {/* Issuing Authority */}
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-3">
+                    Issuing Authority
+                  </h3>
+                  <p className="font-semibold text-lg">
+                    {certificate.issuing_authority}
+                  </p>
+                </div>
+
+                <Separator />
+
+                {/* Blockchain Information */}
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-3">
+                    Blockchain Information
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Certificate Hash
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden font-mono">
+                          {truncateHash(certificate.cert_hash)}
+                        </code>
+                        <CopyButton
+                          text={certificate.cert_hash}
+                          label="Copy Hash"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Version
-                    </p>
-                    <p className="font-mono font-semibold">
-                      v{certificate.version}
-                    </p>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Issuer
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden font-mono">
+                          {certificate.issuer_name} ({certificate.issuer})
+                        </code>
+                        <CopyButton
+                          text={certificate.issuer}
+                          label="Copy Address"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Version
+                      </p>
+                      <p className="font-mono font-semibold">
+                        v{certificate.version}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
