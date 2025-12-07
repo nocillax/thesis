@@ -126,32 +126,15 @@ export function useBulkRevokeUsers() {
 
   return useMutation({
     mutationFn: async (addresses: string[]) => {
-      const results = [];
-      const errors = [];
-
+      // Sequential processing to avoid race conditions on blockchain
       for (const addr of addresses) {
-        try {
-          await usersAPI.revoke(addr);
-          results.push(addr);
-        } catch (error: any) {
-          errors.push({ address: addr, error: error.message });
-        }
+        await usersAPI.revoke(addr);
       }
-
-      return { results, errors };
+      return addresses.length;
     },
-    onSuccess: ({ results, errors }) => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-
-      if (errors.length === 0) {
-        toast.success(`${results.length} user(s) revoked successfully`);
-      } else if (results.length === 0) {
-        toast.error(`Failed to revoke all users`);
-      } else {
-        toast.warning(
-          `${results.length} user(s) revoked, ${errors.length} failed`
-        );
-      }
+      toast.success(`${count} user(s) revoked successfully`);
     },
     onError: () => {
       toast.error("Failed to revoke users");
@@ -165,32 +148,15 @@ export function useBulkReactivateUsers() {
 
   return useMutation({
     mutationFn: async (addresses: string[]) => {
-      const results = [];
-      const errors = [];
-
+      // Sequential processing to avoid race conditions on blockchain
       for (const addr of addresses) {
-        try {
-          await usersAPI.reactivate(addr);
-          results.push(addr);
-        } catch (error: any) {
-          errors.push({ address: addr, error: error.message });
-        }
+        await usersAPI.reactivate(addr);
       }
-
-      return { results, errors };
+      return addresses.length;
     },
-    onSuccess: ({ results, errors }) => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-
-      if (errors.length === 0) {
-        toast.success(`${results.length} user(s) authorized successfully`);
-      } else if (results.length === 0) {
-        toast.error(`Failed to authorize all users`);
-      } else {
-        toast.warning(
-          `${results.length} user(s) authorized, ${errors.length} failed`
-        );
-      }
+      toast.success(`${count} user(s) authorized successfully`);
     },
     onError: () => {
       toast.error("Failed to authorize users");
@@ -204,32 +170,15 @@ export function useBulkGrantAdmin() {
 
   return useMutation({
     mutationFn: async (addresses: string[]) => {
-      const results = [];
-      const errors = [];
-
+      // Sequential processing to avoid race conditions on blockchain
       for (const addr of addresses) {
-        try {
-          await usersAPI.grantAdmin(addr);
-          results.push(addr);
-        } catch (error: any) {
-          errors.push({ address: addr, error: error.message });
-        }
+        await usersAPI.grantAdmin(addr);
       }
-
-      return { results, errors };
+      return addresses.length;
     },
-    onSuccess: ({ results, errors }) => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-
-      if (errors.length === 0) {
-        toast.success(`Admin granted to ${results.length} user(s)`);
-      } else if (results.length === 0) {
-        toast.error(`Failed to grant admin to all users`);
-      } else {
-        toast.warning(
-          `Admin granted to ${results.length} user(s), ${errors.length} failed`
-        );
-      }
+      toast.success(`Admin granted to ${count} user(s)`);
     },
     onError: () => {
       toast.error("Failed to grant admin privileges");
@@ -243,6 +192,7 @@ export function useBulkRevokeAdmin() {
 
   return useMutation({
     mutationFn: async (addresses: string[]) => {
+      // Backend has special logic for last admin, keep sequential for proper error handling
       const results = [];
       const errors = [];
 

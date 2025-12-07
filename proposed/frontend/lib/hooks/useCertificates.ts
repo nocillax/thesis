@@ -115,30 +115,15 @@ export function useBulkRevokeCertificates() {
 
   return useMutation({
     mutationFn: async (hashes: string[]) => {
-      const results = [];
-      const errors = [];
-
+      // Sequential processing to avoid race conditions on blockchain
       for (const hash of hashes) {
-        try {
-          await certificatesAPI.revoke(hash);
-          results.push(hash);
-        } catch (error) {
-          errors.push(hash);
-        }
+        await certificatesAPI.revoke(hash);
       }
-
-      return { results, errors };
+      return hashes.length;
     },
-    onSuccess: ({ results, errors }) => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["certificates"] });
-
-      if (results.length > 0 && errors.length === 0) {
-        toast.success(`${results.length} certificate(s) revoked`);
-      } else if (results.length > 0 && errors.length > 0) {
-        toast.warning(`${results.length} revoked, ${errors.length} failed`);
-      } else {
-        toast.error("Failed to revoke certificates");
-      }
+      toast.success(`${count} certificate(s) revoked`);
     },
     onError: () => {
       toast.error("Failed to revoke certificates");
@@ -152,30 +137,15 @@ export function useBulkReactivateCertificates() {
 
   return useMutation({
     mutationFn: async (hashes: string[]) => {
-      const results = [];
-      const errors = [];
-
+      // Sequential processing to avoid race conditions on blockchain
       for (const hash of hashes) {
-        try {
-          await certificatesAPI.reactivate(hash);
-          results.push(hash);
-        } catch (error) {
-          errors.push(hash);
-        }
+        await certificatesAPI.reactivate(hash);
       }
-
-      return { results, errors };
+      return hashes.length;
     },
-    onSuccess: ({ results, errors }) => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["certificates"] });
-
-      if (results.length > 0 && errors.length === 0) {
-        toast.success(`${results.length} certificate(s) reactivated`);
-      } else if (results.length > 0 && errors.length > 0) {
-        toast.warning(`${results.length} reactivated, ${errors.length} failed`);
-      } else {
-        toast.error("Failed to reactivate certificates");
-      }
+      toast.success(`${count} certificate(s) reactivated`);
     },
     onError: () => {
       toast.error("Failed to reactivate certificates");

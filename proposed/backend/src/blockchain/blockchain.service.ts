@@ -263,10 +263,16 @@ export class BlockchainService implements OnModuleInit {
 
   async revokeCertificate(cert_hash: string, actor_address: string) {
     try {
-      // Check current status before revoking
+      // Check current status - if already revoked, return success (idempotent)
       const cert = await this.verifyCertificate(cert_hash);
       if (cert.is_revoked) {
-        throw new BadRequestException('Certificate is already revoked');
+        return {
+          success: true,
+          cert_hash,
+          message: 'Certificate already revoked',
+          transaction_hash: null,
+          block_number: null,
+        };
       }
 
       const tx = await this.certificateContract.revokeCertificate(
@@ -296,10 +302,16 @@ export class BlockchainService implements OnModuleInit {
 
   async reactivateCertificate(cert_hash: string, actor_address: string) {
     try {
-      // Check current status before reactivating
+      // Check current status - if already active, return success (idempotent)
       const cert = await this.verifyCertificate(cert_hash);
       if (!cert.is_revoked) {
-        throw new BadRequestException('Certificate is already active');
+        return {
+          success: true,
+          cert_hash,
+          message: 'Certificate already active',
+          transaction_hash: null,
+          block_number: null,
+        };
       }
 
       const tx = await this.certificateContract.reactivateCertificate(
