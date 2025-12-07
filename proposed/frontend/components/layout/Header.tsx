@@ -27,6 +27,13 @@ import { SearchCommand } from "./SearchCommand";
 import { useTheme } from "next-themes";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { Cormorant_SC } from "next/font/google";
+
+// Define the font. It's often best practice to do this in your root layout.tsx
+const cormorant = Cormorant_SC({
+  subsets: ["latin"],
+  weight: ["700"], // We only need bold for the logo text
+});
 
 export function Header() {
   const pathname = usePathname();
@@ -66,7 +73,11 @@ export function Header() {
           <div className="relative h-9 w-9">
             <Image src={logoSrc} alt="NXCertify Logo" fill sizes="36px" />
           </div>
-          <span className="text-xl font-bold text-foreground">NXCertify</span>
+          <span
+            className={`text-2xl font-bold text-foreground ${cormorant.className}`}
+          >
+            NXCertify
+          </span>
         </Link>
 
         {/* Desktop Navigation */}

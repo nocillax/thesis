@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -9,9 +9,25 @@ import { FacebookIcon } from "@/public/icons/facebook";
 import { TwitterIcon } from "@/public/icons/twitter";
 import { GitHubIcon } from "@/public/icons/github";
 import { WebsiteIcon } from "@/public/icons/website";
+import Image from "next/image";
+import { useTheme } from "next-themes";
+import { Cormorant_SC } from "next/font/google";
+
+// Define the font. It's often best practice to do this in your root layout.tsx
+const cormorant = Cormorant_SC({
+  subsets: ["latin"],
+  weight: ["700"], // We only need bold for the logo text
+});
 
 export function Footer() {
   const [contractsExpanded, setContractsExpanded] = useState(false);
+  const { theme } = useTheme();
+  const [logoSrc, setLogoSrc] = useState("/logo-dark.png"); // Default logo
+
+  useEffect(() => {
+    // Set the logo based on the theme.
+    setLogoSrc(theme === "dark" ? "/logo-light.png" : "/logo-dark.png");
+  }, [theme]);
 
   const contractAddresses = [
     {
@@ -62,12 +78,12 @@ export function Footer() {
           {/* Left: Logo & Name - Left Aligned */}
           <div className="flex justify-center md:justify-start">
             <div className="flex flex-col items-center gap-2">
-              <div className="h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-2xl">
-                  NX
-                </span>
+              <div className="relative h-12 w-12">
+                <Image src={logoSrc} alt="NXCertify Logo" fill sizes="48px" />
               </div>
-              <span className="text-lg font-bold text-secondary-foreground">
+              <span
+                className={`text-2xl font-bold text-foreground ${cormorant.className}`}
+              >
                 NXCertify
               </span>
             </div>
@@ -97,7 +113,9 @@ export function Footer() {
 
           {/* Right: Social - Right Aligned */}
           <div className="flex flex-col items-center md:items-end gap-3">
-            <h3 className="text-sm text-muted-foreground">Connect with us</h3>
+            <h3 className="text-sm text-muted-foreground mr-3">
+              Connect with us
+            </h3>
             <div className="flex items-center gap-3">
               {socialLinks.map((social) => {
                 const Icon = social.icon;
