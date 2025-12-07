@@ -32,7 +32,40 @@ npm run dev
 
 Application runs at **http://localhost:3000**
 
-### 4. Production Build
+### 4. Connect Rabby Wallet
+
+**Install Rabby Wallet:**
+
+1. Install [Rabby Wallet extension](https://chromewebstore.google.com/detail/acmacodkjbdgmoleebolmdjonilkdbch?utm_source=item-share-cb) from Chrome Web Store
+2. Click on the Rabby extension icon
+
+**Import Admin Account:**
+
+1. Select **"I already have an address"**
+2. Choose **"Private Key"**
+3. Copy admin private key from `backend/.env` file (line 12: `PRIVATE_KEY`)
+4. Paste the private key → Click **"Import"**
+5. Set a password → **"Confirm"**
+6. (Optional) Rename account to "Admin" for clarity
+
+**Add Quorum Network (Optional):**
+
+1. Click settings (top-right)
+2. Click add custom network
+3. Enter details:
+   - **Network Name**: `Quorum Local`
+   - **RPC URL**: `http://localhost:8545`
+   - **Chain ID**: `1337`
+   - **Currency Symbol**: `ETH`
+4. Click **"Save"**
+
+**Verify Setup:**
+
+- Wallet should show your admin address (starts with `0xFE3B...`)
+- Network should display "Quorum Local"
+- You're ready to login at `http://localhost:3000/login`
+
+### 5. Production Build
 
 ```bash
 npm run build
