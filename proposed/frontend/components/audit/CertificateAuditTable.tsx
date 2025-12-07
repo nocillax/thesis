@@ -58,9 +58,9 @@ export function CertificateAuditTable({ logs }: CertificateAuditTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Action</TableHead>
-            <TableHead>Wallet Address</TableHead>
-            <TableHead>When</TableHead>
+            <TableHead className="w-[25%]">Action</TableHead>
+            <TableHead className="w-[50%]">Wallet Address</TableHead>
+            <TableHead className="w-[25%]">When</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

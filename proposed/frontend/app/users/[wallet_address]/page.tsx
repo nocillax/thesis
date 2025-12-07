@@ -109,15 +109,23 @@ export default function UserProfilePage({
   return (
     <div className="container py-8">
       {/* Header */}
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()} size="sm">
-          <ArrowLeft className="mr-2 h-4 w-4" />
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
+            <UserIcon className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">User Profile</h1>
+            <p className="text-muted-foreground font-medium">
+              View user information and their action history
+            </p>
+          </div>
+        </div>
+
+        <Button variant="ghost" onClick={() => router.back()} size="lg">
+          <ArrowLeft className="mr-2 h-5 w-5" />
           Back
         </Button>
-        <h1 className="text-3xl font-bold mt-2 flex items-center gap-2">
-          <UserIcon className="h-8 w-8" />
-          User Profile
-        </h1>
       </div>
 
       {/* User Profile Card */}
@@ -136,13 +144,12 @@ export default function UserProfilePage({
 
       {/* Action History Section */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle>Action History</CardTitle>
+            <CardTitle className="text-2xl font-bold">Action History</CardTitle>
             {meta && (
-              <div className="text-sm text-muted-foreground">
-                Page {meta.current_page} of {meta.total_pages} (
-                {meta.total_count} total)
+              <div className="text-sm text-muted-foreground font-medium">
+                Page {meta.current_page} of {meta.total_pages} ({meta.total_count} total)
               </div>
             )}
           </div>
@@ -155,24 +162,24 @@ export default function UserProfilePage({
             <div className="flex items-center justify-center gap-2 mt-4">
               <Button
                 variant="outline"
-                size="sm"
+                size="lg"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
+                <ChevronLeft className="h-5 w-5 mr-1" />
                 Previous
               </Button>
-              <span className="text-sm text-muted-foreground px-4">
+              <span className="text-sm text-muted-foreground font-medium px-4">
                 Page {page} of {meta.total_pages}
               </span>
               <Button
                 variant="outline"
-                size="sm"
+                size="lg"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={!meta.has_more}
               >
                 Next
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <ChevronRight className="h-5 w-5 ml-1" />
               </Button>
             </div>
           )}

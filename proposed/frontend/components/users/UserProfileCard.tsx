@@ -28,60 +28,73 @@ export function UserProfileCard({
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex items-start gap-6">
-          {/* Avatar with optional admin border */}
-          <UserAvatar
-            walletAddress={walletAddress}
-            username={username}
-            isAdmin={isAdmin}
-            size="lg"
-          />
-
-          {/* User Details */}
-          <div className="flex-1 space-y-4">
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-4">
             {/* Username and Admin Badge */}
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-2xl font-bold">{username}</h2>
-                {isAdmin && (
-                  <Badge
-                    variant="outline"
-                    className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5 mr-1" />
-                    Admin
-                  </Badge>
-                )}
+              <div className="flex items-center gap-2 mb-2">
+                <UserAvatar
+                  walletAddress={walletAddress}
+                  username={username}
+                  isAdmin={isAdmin}
+                  size="md"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold">{username}</h2>
+                    {isAdmin && (
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                        Admin
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">{email}</p>
+            </div>
+
+            {/* Email */}
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Email
+              </p>
+              <p className="font-semibold">{email}</p>
+            </div>
+
+            {/* Registration Date */}
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Registered On
+              </p>
+              <p className="font-semibold">
+                {formatDate(registrationDate)}
+              </p>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-4">
+            {/* Status */}
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Status</p>
+              <StatusBadge isActive={isAuthorized} type="user" />
             </div>
 
             {/* Wallet Address */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
                 Wallet Address
               </p>
               <div className="flex items-center gap-2">
-                <code className="text-xs bg-accent px-3 py-1.5 rounded border font-mono">
-                  {truncateAddress(walletAddress)}
+                <code className="text-xs bg-accent px-3 py-1.5 rounded border font-mono break-all md:break-normal">
+                  <span className="hidden md:inline">{walletAddress}</span>
+                  <span className="md:hidden">{truncateAddress(walletAddress)}</span>
                 </code>
                 <CopyButton text={walletAddress} label="Copy Address" />
-              </div>
-            </div>
-
-            {/* Registration Date and Status */}
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">
-                  Registered On
-                </p>
-                <p className="text-sm font-medium">
-                  {formatDate(registrationDate)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                <StatusBadge isActive={isAuthorized} type="user" />
               </div>
             </div>
           </div>
