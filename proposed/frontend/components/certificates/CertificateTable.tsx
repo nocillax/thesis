@@ -95,7 +95,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Student ID
             {isSorted === "asc" ? (
@@ -125,7 +125,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Name
             {isSorted === "asc" ? (
@@ -147,7 +147,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Degree
             {isSorted === "asc" ? (
@@ -169,7 +169,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Program
             {isSorted === "asc" ? (
@@ -191,7 +191,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             CGPA
             {isSorted === "asc" ? (
@@ -214,7 +214,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Issue Date
             {isSorted === "asc" ? (
@@ -237,7 +237,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Version
             {isSorted === "asc" ? (
@@ -262,7 +262,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Status
             {isSorted === "asc" ? (

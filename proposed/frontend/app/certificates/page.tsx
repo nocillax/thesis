@@ -103,18 +103,27 @@ export default function CertificatesPage() {
     <div className="container py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Certificates</h1>
-          <p className="text-muted-foreground">
-            {allCertificates.length > 0
-              ? `Showing ${allCertificates.length} certificate(s)`
-              : "No certificates found"}
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
+            <FileText className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">
+              Certificates
+            </h1>
+            <p className="text-muted-foreground font-medium">
+              {allCertificates.length > 0
+                ? `Showing ${allCertificates.length} certificate${
+                    allCertificates.length !== 1 ? "s" : ""
+                  }`
+                : "No certificates found"}
+            </p>
+          </div>
         </div>
         {user?.is_authorized && (
-          <Button asChild>
+          <Button asChild size="lg">
             <Link href="/certificates/issue">
-              <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className="mr-2 h-5 w-5" />
               Issue Certificate
             </Link>
           </Button>
@@ -133,13 +142,13 @@ export default function CertificatesPage() {
       {!isError && allCertificates.length === 0 && (
         <EmptyState
           icon={FileText}
-          title="No certificates found"
-          description="There are no certificates in the system yet."
+          title="No Certificates Found"
+          description="There are no certificates in the system yet. Get started by issuing your first certificate."
           action={
             user?.is_authorized ? (
-              <Button asChild>
+              <Button asChild size="lg">
                 <Link href="/certificates/issue">
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <PlusCircle className="mr-2 h-5 w-5" />
                   Issue First Certificate
                 </Link>
               </Button>
@@ -164,15 +173,19 @@ export default function CertificatesPage() {
           {/* Load More Trigger & Button */}
           <div ref={loadMoreRef} className="mt-8 flex justify-center">
             {isFetchingNextPage && (
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2 text-muted-foreground font-medium">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Loading more...</span>
+                <span>Loading more certificates...</span>
               </div>
             )}
 
             {!isFetchingNextPage && hasNextPage && (
-              <Button variant="outline" onClick={() => fetchNextPage()}>
-                Load More
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => fetchNextPage()}
+              >
+                Load More Certificates
               </Button>
             )}
           </div>

@@ -96,28 +96,39 @@ export default function IssueCertificatePage() {
   return (
     <div className="container py-8">
       <div className="max-w-2xl mx-auto">
-        <Card className="border-2">
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
-                <FileText className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl">
-                  Issue New Certificate
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Create and issue a new academic certificate on the blockchain
-                </CardDescription>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mx-auto mb-4">
+            <FileText className="h-8 w-8 text-primary-foreground" />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">
+            Issue New Certificate
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Create and issue a new academic certificate on the blockchain
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-bold">
+              Certificate Information
+            </CardTitle>
+            <CardDescription className="font-medium">
+              Fill in all required fields to issue a certificate
+            </CardDescription>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Student ID */}
               <div className="space-y-2">
-                <Label htmlFor="student_id">Student ID *</Label>
+                <Label
+                  htmlFor="student_id"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Student ID *
+                </Label>
                 <Input
                   id="student_id"
                   placeholder="e.g., STU2025001"
@@ -125,7 +136,7 @@ export default function IssueCertificatePage() {
                   disabled={isPending}
                 />
                 {errors.student_id && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.student_id.message}
                   </p>
                 )}
@@ -133,7 +144,12 @@ export default function IssueCertificatePage() {
 
               {/* Student Name */}
               <div className="space-y-2">
-                <Label htmlFor="student_name">Student Name *</Label>
+                <Label
+                  htmlFor="student_name"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Student Name *
+                </Label>
                 <Input
                   id="student_name"
                   placeholder="e.g., John Doe"
@@ -141,7 +157,7 @@ export default function IssueCertificatePage() {
                   disabled={isPending}
                 />
                 {errors.student_name && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.student_name.message}
                   </p>
                 )}
@@ -149,7 +165,12 @@ export default function IssueCertificatePage() {
 
               {/* Degree */}
               <div className="space-y-2">
-                <Label htmlFor="degree">Degree *</Label>
+                <Label
+                  htmlFor="degree"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Degree *
+                </Label>
                 <Input
                   id="degree"
                   placeholder="e.g., Bachelor of Science"
@@ -157,7 +178,7 @@ export default function IssueCertificatePage() {
                   disabled={isPending}
                 />
                 {errors.degree && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.degree.message}
                   </p>
                 )}
@@ -165,7 +186,12 @@ export default function IssueCertificatePage() {
 
               {/* Program */}
               <div className="space-y-2">
-                <Label htmlFor="program">Program *</Label>
+                <Label
+                  htmlFor="program"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Program *
+                </Label>
                 <Input
                   id="program"
                   placeholder="e.g., Computer Science"
@@ -173,7 +199,7 @@ export default function IssueCertificatePage() {
                   disabled={isPending}
                 />
                 {errors.program && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.program.message}
                   </p>
                 )}
@@ -181,7 +207,12 @@ export default function IssueCertificatePage() {
 
               {/* CGPA */}
               <div className="space-y-2">
-                <Label htmlFor="cgpa">CGPA *</Label>
+                <Label
+                  htmlFor="cgpa"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  CGPA *
+                </Label>
                 <Input
                   id="cgpa"
                   type="text"
@@ -190,18 +221,23 @@ export default function IssueCertificatePage() {
                   disabled={isPending}
                 />
                 {errors.cgpa && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.cgpa.message}
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-medium">
                   Enter CGPA on a 4.0 scale (e.g., 3.85)
                 </p>
               </div>
 
               {/* Issuing Authority */}
               <div className="space-y-2">
-                <Label htmlFor="issuing_authority">Issuing Authority *</Label>
+                <Label
+                  htmlFor="issuing_authority"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Issuing Authority *
+                </Label>
                 <Input
                   id="issuing_authority"
                   placeholder="e.g., University of Example"
@@ -209,7 +245,7 @@ export default function IssueCertificatePage() {
                   disabled={isPending}
                 />
                 {errors.issuing_authority && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.issuing_authority.message}
                   </p>
                 )}
@@ -217,15 +253,20 @@ export default function IssueCertificatePage() {
 
               {/* Submit Buttons */}
               <div className="flex gap-4 pt-4">
-                <Button type="submit" disabled={isPending} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  size="lg"
+                  className="flex-1 font-semibold"
+                >
                   {isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Issuing...
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Issuing Certificate...
                     </>
                   ) : (
                     <>
-                      <FileText className="mr-2 h-4 w-4" />
+                      <FileText className="mr-2 h-5 w-5" />
                       Issue Certificate
                     </>
                   )}
@@ -233,8 +274,10 @@ export default function IssueCertificatePage() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="lg"
                   onClick={() => router.push("/certificates")}
                   disabled={isPending}
+                  className="font-semibold"
                 >
                   Cancel
                 </Button>
@@ -249,8 +292,8 @@ export default function IssueCertificatePage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              Issuing certificate...
+            <p className="text-sm text-muted-foreground font-medium">
+              Issuing certificate on blockchain...
             </p>
           </div>
         </div>
