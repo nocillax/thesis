@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { UserPlus, Loader2, Users as UsersIcon } from "lucide-react";
+import {
+  UserPlus,
+  Users as UsersIcon,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUsers } from "@/lib/hooks/useUsers";
 import { UserFilters } from "@/components/users/UserFilters";
@@ -15,10 +20,12 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { UserFilters as UserFiltersType } from "@/lib/api/users";
 import { loadUserFilters, saveUserFilters } from "@/lib/utils/filterStorage";
 
+const ITEMS_PER_PAGE = 20;
+
 export default function UsersPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
 
   // Initialize filters from localStorage
   const [filters, setFilters] = useState<UserFiltersType>(() => {
@@ -28,15 +35,7 @@ export default function UsersPage() {
     return {};
   });
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useUsers(filters);
+  const { data, isLoading, isError, error } = useUsers(page, filters);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -55,25 +54,8 @@ export default function UsersPage() {
 
   const handleFiltersChange = (newFilters: UserFiltersType) => {
     setFilters(newFilters);
+    setPage(1); // Reset to page 1 when filters change
   };
-
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(loadMoreRef.current);
-
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (authLoading) {
     return (
@@ -91,10 +73,10 @@ export default function UsersPage() {
     return null;
   }
 
-  const allUsers = data?.pages.flatMap((page) => page.data) || [];
+  const users = data?.data || [];
+  const meta = data?.meta;
 
-  // Show loading only if we have no data yet
-  if (isLoading && allUsers.length === 0) {
+  if (isLoading) {
     return (
       <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <LoadingSpinner size="lg" />
@@ -115,11 +97,7 @@ export default function UsersPage() {
               User Management
             </h1>
             <p className="text-muted-foreground font-medium">
-              {allUsers.length > 0
-                ? `Showing ${allUsers.length} user${
-                    allUsers.length !== 1 ? "s" : ""
-                  }`
-                : "No users found"}
+              Manage user accounts and permissions
             </p>
           </div>
         </div>
@@ -140,7 +118,7 @@ export default function UsersPage() {
       )}
 
       {/* Empty State */}
-      {!isError && allUsers.length === 0 && (
+      {!isError && users.length === 0 && (
         <EmptyState
           icon={UsersIcon}
           title="No Users Found"
@@ -157,10 +135,10 @@ export default function UsersPage() {
       )}
 
       {/* User Table */}
-      {!isError && allUsers.length > 0 && (
+      {!isError && users.length > 0 && (
         <>
           <UserTable
-            data={allUsers}
+            data={users}
             filterComponent={
               <UserFilters
                 filters={filters}
@@ -169,23 +147,42 @@ export default function UsersPage() {
             }
           />
 
-          {/* Load More Trigger & Button */}
-          <div ref={loadMoreRef} className="mt-8 flex justify-center">
-            {isFetchingNextPage && (
-              <div className="flex items-center gap-2 text-muted-foreground font-medium">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Loading more users...</span>
+          {/* Pagination and Count */}
+          <div className="mt-6 flex items-center justify-between">
+            {/* Total Count */}
+            {meta && (
+              <div className="text-sm text-muted-foreground font-medium">
+                Showing {(page - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(page * ITEMS_PER_PAGE, meta.total_count)} (
+                {meta.total_count} total)
               </div>
             )}
 
-            {!isFetchingNextPage && hasNextPage && (
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => fetchNextPage()}
-              >
-                Load More Users
-              </Button>
+            {/* Pagination Controls */}
+            {meta && meta.total_pages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-5 w-5 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground font-medium px-4">
+                  Page {page} of {meta.total_pages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!meta.has_more}
+                >
+                  Next
+                  <ChevronRight className="h-5 w-5 ml-1" />
+                </Button>
+              </div>
             )}
           </div>
         </>

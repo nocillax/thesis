@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Loader2, Eye, EyeOff, UserCheck } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRegisterUser } from "@/lib/hooks/useUsers";
 import { Button } from "@/components/ui/button";
@@ -263,7 +263,7 @@ export default function RegisterUserPage() {
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
-                  <UserPlus className="h-6 w-6 text-primary-foreground" />
+                  <UserCheck className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
                   <DialogTitle className="text-2xl font-bold tracking-tight">
@@ -288,6 +288,7 @@ export default function RegisterUserPage() {
                       value={generatedKeys.address}
                       readOnly
                       className="font-mono text-xs bg-accent"
+                      onFocus={(e) => e.target.blur()}
                     />
                     <CopyButton
                       text={generatedKeys.address}
@@ -307,6 +308,7 @@ export default function RegisterUserPage() {
                       readOnly
                       type={showPrivateKey ? "text" : "password"}
                       className="font-mono text-xs bg-accent"
+                      onFocus={(e) => e.target.blur()}
                     />
                     <Button
                       variant="ghost"

@@ -1,24 +1,16 @@
-import {
-  useInfiniteQuery,
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { certificatesAPI, CertificateFilters } from "@/lib/api/certificates";
 import { toast } from "sonner";
 
-// Infinite query for certificates list
+// Paginated query for certificates list
 export function useCertificates(
+  page: number = 1,
   filters?: CertificateFilters,
   shouldPoll: boolean = true
 ) {
-  return useInfiniteQuery({
-    queryKey: ["certificates", filters],
-    queryFn: ({ pageParam = 1 }) =>
-      certificatesAPI.getAll(pageParam, 20, filters),
-    getNextPageParam: (lastPage) =>
-      lastPage.meta.has_more ? lastPage.meta.current_page + 1 : undefined,
-    initialPageParam: 1,
+  return useQuery({
+    queryKey: ["certificates", page, filters],
+    queryFn: () => certificatesAPI.getAll(page, 20, filters),
     refetchInterval: shouldPoll ? 15000 : false, // Poll every 15 seconds when enabled
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,

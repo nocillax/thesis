@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PlusCircle, Loader2, FileText } from "lucide-react";
+import { PlusCircle, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCertificates } from "@/lib/hooks/useCertificates";
 import { CertificateFilters } from "@/components/certificates/CertificateFilters";
@@ -18,10 +18,12 @@ import {
   saveCertificateFilters,
 } from "@/lib/utils/filterStorage";
 
+const ITEMS_PER_PAGE = 20;
+
 export default function CertificatesPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
 
   // Initialize filters from localStorage
   const [filters, setFilters] = useState<CertificateFiltersType>(() => {
@@ -31,15 +33,7 @@ export default function CertificatesPage() {
     return {};
   });
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useCertificates(filters);
+  const { data, isLoading, isError, error } = useCertificates(page, filters);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -56,25 +50,8 @@ export default function CertificatesPage() {
 
   const handleFiltersChange = (newFilters: CertificateFiltersType) => {
     setFilters(newFilters);
+    setPage(1); // Reset to page 1 when filters change
   };
-
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(loadMoreRef.current);
-
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (authLoading) {
     return (
@@ -88,10 +65,10 @@ export default function CertificatesPage() {
     return null;
   }
 
-  const allCertificates = data?.pages.flatMap((page) => page.data) || [];
+  const certificates = data?.data || [];
+  const meta = data?.meta;
 
-  // Show loading only if we have no data yet
-  if (isLoading && allCertificates.length === 0) {
+  if (isLoading) {
     return (
       <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <LoadingSpinner size="lg" />
@@ -112,11 +89,7 @@ export default function CertificatesPage() {
               Certificates
             </h1>
             <p className="text-muted-foreground font-medium">
-              {allCertificates.length > 0
-                ? `Showing ${allCertificates.length} certificate${
-                    allCertificates.length !== 1 ? "s" : ""
-                  }`
-                : "No certificates found"}
+              Manage and view all issued certificates
             </p>
           </div>
         </div>
@@ -139,7 +112,7 @@ export default function CertificatesPage() {
       )}
 
       {/* Empty State */}
-      {!isError && allCertificates.length === 0 && (
+      {!isError && certificates.length === 0 && (
         <EmptyState
           icon={FileText}
           title="No Certificates Found"
@@ -158,10 +131,10 @@ export default function CertificatesPage() {
       )}
 
       {/* Certificate Table */}
-      {!isError && allCertificates.length > 0 && (
+      {!isError && certificates.length > 0 && (
         <>
           <CertificateTable
-            data={allCertificates}
+            data={certificates}
             filterComponent={
               <CertificateFilters
                 filters={filters}
@@ -170,23 +143,42 @@ export default function CertificatesPage() {
             }
           />
 
-          {/* Load More Trigger & Button */}
-          <div ref={loadMoreRef} className="mt-8 flex justify-center">
-            {isFetchingNextPage && (
-              <div className="flex items-center gap-2 text-muted-foreground font-medium">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Loading more certificates...</span>
+          {/* Pagination and Count */}
+          <div className="mt-6 flex items-center justify-between">
+            {/* Total Count */}
+            {meta && (
+              <div className="text-sm text-muted-foreground font-medium">
+                Showing {(page - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(page * ITEMS_PER_PAGE, meta.total_count)} (
+                {meta.total_count} total)
               </div>
             )}
 
-            {!isFetchingNextPage && hasNextPage && (
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => fetchNextPage()}
-              >
-                Load More Certificates
-              </Button>
+            {/* Pagination Controls */}
+            {meta && meta.total_pages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-5 w-5 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground font-medium px-4">
+                  Page {page} of {meta.total_pages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!meta.has_more}
+                >
+                  Next
+                  <ChevronRight className="h-5 w-5 ml-1" />
+                </Button>
+              </div>
             )}
           </div>
         </>

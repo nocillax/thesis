@@ -1,20 +1,16 @@
-import {
-  useInfiniteQuery,
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersAPI, UserFilters } from "@/lib/api/users";
 import { toast } from "sonner";
 
-// Infinite query for users list with auto-refetch (polling)
-export function useUsers(filters?: UserFilters, shouldPoll: boolean = true) {
-  return useInfiniteQuery({
-    queryKey: ["users", filters],
-    queryFn: ({ pageParam = 1 }) => usersAPI.getAll(pageParam, 20, filters),
-    getNextPageParam: (lastPage) =>
-      lastPage.meta.has_more ? lastPage.meta.current_page + 1 : undefined,
-    initialPageParam: 1,
+// Paginated query for users list with auto-refetch (polling)
+export function useUsers(
+  page: number = 1,
+  filters?: UserFilters,
+  shouldPoll: boolean = true
+) {
+  return useQuery({
+    queryKey: ["users", page, filters],
+    queryFn: () => usersAPI.getAll(page, 20, filters),
     refetchInterval: shouldPoll ? 15000 : false, // Poll every 15 seconds when enabled
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
