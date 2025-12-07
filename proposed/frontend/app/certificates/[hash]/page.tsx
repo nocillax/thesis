@@ -14,6 +14,7 @@ import {
   Blocks,
   FileSignature,
   Download,
+  FileText,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { certificatesAPI } from "@/lib/api/certificates";
@@ -89,7 +90,7 @@ export default function CertificateDetailPage({
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-6">
           <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
-            <Award className="h-6 w-6 text-primary-foreground" />
+            <FileText className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
             <h1 className="text-4xl font-bold tracking-tight mb-1">

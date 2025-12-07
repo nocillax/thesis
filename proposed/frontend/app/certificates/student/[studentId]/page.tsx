@@ -63,30 +63,31 @@ export default function StudentVersionsPage({
   return (
     <div className="container py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <Button
-            variant="ghost"
-            onClick={() => router.back()}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-3xl font-bold mb-2">Certificate Versions</h1>
-          <p className="text-muted-foreground">
-            Student ID:{" "}
-            <span className="font-mono font-semibold">{studentId}</span>
-          </p>
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
+            <FileText className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">
+              Certificate Versions
+            </h1>
+
+            <p className="text-muted-foreground font-bold">{studentId}</p>
+          </div>
         </div>
-        <History className="h-12 w-12 text-muted-foreground" />
+
+        <Button variant="ghost" onClick={() => router.back()} size="lg">
+          <ArrowLeft className="mr-2 h-5 w-5" />
+          Back
+        </Button>
       </div>
 
       {/* Empty State */}
       {certificates && certificates.length === 0 && (
         <EmptyState
           icon={FileText}
-          title="No certificates found"
+          title="No Certificates Found"
           description={`No certificates found for student ID ${studentId}`}
         />
       )}
@@ -99,21 +100,23 @@ export default function StudentVersionsPage({
             .filter((cert) => !cert.is_revoked)
             .map((cert) => (
               <Card key={cert.cert_hash} className="border-2 border-success">
-                <CardHeader>
+                <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-xl">
+                        <CardTitle className="text-2xl font-bold">
                           {cert.student_name}
                         </CardTitle>
                         <StatusBadge isActive={!cert.is_revoked} />
                       </div>
-                      <CardDescription>
-                        {cert.degree} - {cert.program}
+                      <CardDescription className="font-medium">
+                        {cert.degree} • {cert.program}
                       </CardDescription>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Version</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Version
+                      </p>
                       <p className="text-2xl font-bold font-mono text-green-600">
                         v{cert.version}
                       </p>
@@ -123,30 +126,42 @@ export default function StudentVersionsPage({
                 <CardContent>
                   <div className="grid md:grid-cols-4 gap-4 mb-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">CGPA</p>
-                      <p className="font-semibold text-lg">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        CGPA
+                      </p>
+                      <p className="font-bold text-lg">
                         {formatCGPA(cert.cgpa)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Issued</p>
-                      <p className="font-medium">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Issued
+                      </p>
+                      <p className="font-semibold">
                         {formatDate(cert.issuance_date)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Authority</p>
-                      <p className="font-medium">{cert.issuing_authority}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Authority
+                      </p>
+                      <p className="font-semibold">{cert.issuing_authority}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Issuer</p>
-                      <p className="font-medium">{cert.issuer_name}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Issuer
+                      </p>
+                      <p className="font-semibold">{cert.issuer_name}</p>
                     </div>
                   </div>
-                  <Button asChild variant="outline" className="w-full">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="lg"
+                    className="w-full font-semibold"
+                  >
                     <Link href={`/certificates/${cert.cert_hash}`}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      View Certificate
+                      View Certificate Details
                     </Link>
                   </Button>
                 </CardContent>
@@ -158,7 +173,7 @@ export default function StudentVersionsPage({
             <>
               <div className="flex items-center gap-2 pt-4">
                 <div className="h-px flex-1 bg-border" />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wide">
                   Revoked Versions
                 </p>
                 <div className="h-px flex-1 bg-border" />
@@ -171,21 +186,21 @@ export default function StudentVersionsPage({
                     key={cert.cert_hash}
                     className="border-destructive/50 opacity-75"
                   >
-                    <CardHeader>
+                    <CardHeader className="pb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <CardTitle className="text-xl">
+                            <CardTitle className="text-2xl font-bold">
                               {cert.student_name}
                             </CardTitle>
                             <StatusBadge isActive={!cert.is_revoked} />
                           </div>
-                          <CardDescription>
-                            {cert.degree} - {cert.program}
+                          <CardDescription className="font-medium">
+                            {cert.degree} • {cert.program}
                           </CardDescription>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                             Version
                           </p>
                           <p className="text-2xl font-bold font-mono text-destructive">
@@ -197,38 +212,44 @@ export default function StudentVersionsPage({
                     <CardContent>
                       <div className="grid md:grid-cols-4 gap-4 mb-4">
                         <div>
-                          <p className="text-sm text-muted-foreground">CGPA</p>
-                          <p className="font-semibold text-lg">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                            CGPA
+                          </p>
+                          <p className="font-bold text-lg">
                             {formatCGPA(cert.cgpa)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                             Issued
                           </p>
-                          <p className="font-medium">
+                          <p className="font-semibold">
                             {formatDate(cert.issuance_date)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                             Authority
                           </p>
-                          <p className="font-medium">
+                          <p className="font-semibold">
                             {cert.issuing_authority}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                             Issuer
                           </p>
-                          <p className="font-medium">{cert.issuer_name}</p>
+                          <p className="font-semibold">{cert.issuer_name}</p>
                         </div>
                       </div>
-                      <Button asChild variant="outline" className="w-full">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="lg"
+                        className="w-full font-semibold"
+                      >
                         <Link href={`/certificates/${cert.cert_hash}`}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          View Certificate
+                          View Certificate Details
                         </Link>
                       </Button>
                     </CardContent>
@@ -246,21 +267,27 @@ export default function StudentVersionsPage({
             <div className="flex items-center justify-center gap-8">
               <div className="text-center">
                 <p className="text-3xl font-bold">{certificates.length}</p>
-                <p className="text-sm text-muted-foreground">Total Versions</p>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Total Versions
+                </p>
               </div>
               <div className="h-12 w-px bg-border" />
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-600">
                   {certificates.filter((c) => !c.is_revoked).length}
                 </p>
-                <p className="text-sm text-muted-foreground">Active</p>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Active
+                </p>
               </div>
               <div className="h-12 w-px bg-border" />
               <div className="text-center">
                 <p className="text-3xl font-bold text-destructive">
                   {certificates.filter((c) => c.is_revoked).length}
                 </p>
-                <p className="text-sm text-muted-foreground">Revoked</p>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Revoked
+                </p>
               </div>
             </div>
           </CardContent>
