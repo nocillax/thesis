@@ -5,6 +5,7 @@
 This project uses **Ethereum blockchain** via a local **Quorum network** to store user registrations and academic certificates **immutably**. Once data is written to the blockchain, it cannot be changed—only new versions can be added.
 
 **Key Concepts:**
+
 - **Smart Contract**: Code that runs on the blockchain (like a program that everyone can verify)
 - **Transaction**: An operation that changes blockchain state (costs gas)
 - **Event**: Blockchain logs emitted when something happens (for audit trails)
@@ -25,6 +26,7 @@ Smart Contracts (UserRegistry.sol, CertificateRegistry.sol)
 ```
 
 **Your backend connects to blockchain via:**
+
 - RPC URL: `http://localhost:8545`
 - Admin Wallet: Signs all transactions
 - Contract Addresses: Where your smart contracts live
@@ -40,23 +42,26 @@ When someone registers, the backend creates a **new blockchain wallet** for them
 ### Step-by-Step
 
 **1. Backend generates a wallet:**
+
 ```typescript
 const newWallet = ethers.Wallet.createRandom();
 // Returns: { address: "0xabc...", privateKey: "0x123..." }
 ```
 
 **2. Backend calls smart contract:**
+
 ```typescript
 const tx = await userRegistryContract.registerUser(
-  walletAddress,    // 0xabc...
-  username,         // "john_doe"
-  email,           // "john@example.com"
-  is_admin         // false
+  walletAddress, // 0xabc...
+  username, // "john_doe"
+  email, // "john@example.com"
+  is_admin // false
 );
 await tx.wait(); // Wait for blockchain to confirm
 ```
 
 **3. Smart contract stores it:**
+
 ```solidity
 // UserRegistry.sol
 mapping(address => User) public users;
@@ -69,7 +74,7 @@ function registerUser(
 ) public onlyAdmin {
     // Check if already exists
     require(bytes(users[wallet_address].username).length == 0, "User already registered");
-    
+
     // Store user data
     users[wallet_address] = User({
         username: username,
@@ -78,19 +83,21 @@ function registerUser(
         is_authorized: true,
         is_admin: is_admin
     });
-    
+
     // Emit event for audit trail
     emit UserRegistered(wallet_address, username, email, block.number);
 }
 ```
 
 **Key Points:**
+
 - `onlyAdmin` = Only admin wallet can register users
 - `block.timestamp` = Current blockchain time
 - `emit UserRegistered` = Creates audit log
 - Data is **permanent** once confirmed
 
 **4. User gets their private key:**
+
 ```json
 {
   "wallet_address": "0xabc...",
@@ -112,24 +119,28 @@ Instead of username/password, users login by **signing a message** with their pr
 ### Step-by-Step
 
 **1. Backend generates a challenge:**
+
 ```typescript
-const nonce = crypto.randomBytes(32).toString('hex');
+const nonce = crypto.randomBytes(32).toString("hex");
 const message = `Sign this message to authenticate: ${nonce}`;
 ```
 
 **2. User signs with Rabby Wallet (frontend):**
+
 ```typescript
 // User's wallet signs the message
 const signature = await wallet.signMessage(message);
 ```
 
 **3. Backend verifies signature:**
+
 ```typescript
 const recoveredAddress = ethers.verifyMessage(message, signature);
 // Returns: "0xabc..." if valid signature
 ```
 
 **4. Backend checks blockchain:**
+
 ```typescript
 const user = await userRegistryContract.getUser(recoveredAddress);
 
@@ -140,6 +151,7 @@ if (user.is_authorized) {
 ```
 
 **Why This Works:**
+
 - Signing proves you own the private key
 - Only the correct private key can create a valid signature
 - Backend verifies without ever seeing the private key
@@ -152,6 +164,7 @@ if (user.is_authorized) {
 ### How It Works
 
 When issuing a certificate, the backend:
+
 1. Computes a **unique hash** of the certificate data
 2. Admin signs it (proof of authenticity)
 3. Stores it on blockchain
@@ -159,6 +172,7 @@ When issuing a certificate, the backend:
 ### Step-by-Step
 
 **1. Backend computes certificate hash:**
+
 ```typescript
 computeHash(
   student_id,      // "S12345"
@@ -168,7 +182,7 @@ computeHash(
   version,        // 1
   issuance_date   // 1733587200
 ): string {
-  const data = student_id + student_name + degree_program + 
+  const data = student_id + student_name + degree_program +
                cgpa.toString() + version.toString() + issuance_date.toString();
   return ethers.keccak256(ethers.toUtf8Bytes(data));
   // Returns: "0x5a15dc..."
@@ -176,28 +190,31 @@ computeHash(
 ```
 
 **2. Admin wallet signs the hash:**
+
 ```typescript
 const signature = await adminWallet.signMessage(ethers.getBytes(cert_hash));
 // Returns: "0x8c3d..." (cryptographic proof)
 ```
 
 **3. Backend calls smart contract:**
+
 ```typescript
 const tx = await certificateContract.issueCertificate(
-  cert_hash,           // "0x5a15dc..."
-  student_id,          // "S12345"
-  student_name,        // "John Doe"
-  degree,             // "BSc"
-  program,            // "Computer Science"
-  cgpa_scaled,        // 385 (3.85 * 100)
-  issuing_authority,  // "MIT"
-  signature,          // "0x8c3d..."
-  walletAddress       // "0xabc..." (who issued it)
+  cert_hash, // "0x5a15dc..."
+  student_id, // "S12345"
+  student_name, // "John Doe"
+  degree, // "BSc"
+  program, // "Computer Science"
+  cgpa_scaled, // 385 (3.85 * 100)
+  issuing_authority, // "MIT"
+  signature, // "0x8c3d..."
+  walletAddress // "0xabc..." (who issued it)
 );
 await tx.wait();
 ```
 
 **4. Smart contract validates and stores:**
+
 ```solidity
 // CertificateRegistry.sol
 function issueCertificate(
@@ -207,7 +224,7 @@ function issueCertificate(
 ) public onlyAuthorized {
     // Check if cert already exists
     require(!certificates[cert_hash].exists, "Certificate already issued");
-    
+
     // Store certificate
     certificates[cert_hash] = Certificate({
         student_id: student_id,
@@ -223,17 +240,18 @@ function issueCertificate(
         version: student_to_latest_version[student_id] + 1,
         exists: true
     });
-    
+
     // Track latest version
     student_to_latest_version[student_id]++;
     student_certificates[student_id].push(cert_hash);
-    
+
     // Emit event
     emit CertificateIssued(cert_hash, student_id, version, msg.sender, block.number);
 }
 ```
 
 **Key Points:**
+
 - `cert_hash` = Unique identifier (like fingerprint)
 - `signature` = Proof admin approved it
 - `version` = Allows multiple certificates per student
@@ -246,6 +264,7 @@ function issueCertificate(
 ### How It Works
 
 Anyone with the certificate hash can verify it's authentic by checking:
+
 1. Does it exist on blockchain?
 2. Is it revoked?
 3. Does the signature match?
@@ -253,18 +272,21 @@ Anyone with the certificate hash can verify it's authentic by checking:
 ### Step-by-Step
 
 **1. User provides certificate hash:**
+
 ```
 GET /api/blockchain/certificates/verify/0x5a15dc...
 ```
 
 **2. Backend queries smart contract:**
+
 ```typescript
 const result = await certificateContract.verifyCertificate(cert_hash);
 ```
 
 **3. Smart contract returns data:**
+
 ```solidity
-function verifyCertificate(bytes32 cert_hash) 
+function verifyCertificate(bytes32 cert_hash)
     public view returns (Certificate memory) {
     require(certificates[cert_hash].exists, "Certificate does not exist");
     return certificates[cert_hash];
@@ -272,6 +294,7 @@ function verifyCertificate(bytes32 cert_hash)
 ```
 
 **4. Backend verifies signature (optional):**
+
 ```typescript
 const recoveredAddress = ethers.verifyMessage(
   ethers.getBytes(cert_hash),
@@ -281,6 +304,7 @@ const recoveredAddress = ethers.verifyMessage(
 ```
 
 **5. Response includes:**
+
 ```json
 {
   "cert_hash": "0x5a15dc...",
@@ -297,6 +321,7 @@ const recoveredAddress = ethers.verifyMessage(
 ```
 
 **Why It's Trustworthy:**
+
 - Data comes from blockchain (immutable)
 - Signature proves admin issued it
 - Anyone can verify independently
@@ -313,27 +338,30 @@ You **cannot delete** blockchain data. Instead, you mark it as revoked by settin
 ### Revoke
 
 **1. Backend calls contract:**
+
 ```typescript
 const tx = await certificateContract.revokeCertificate(
   cert_hash,
-  actor_address  // Who is revoking
+  actor_address // Who is revoking
 );
 ```
 
 **2. Smart contract updates flag:**
+
 ```solidity
-function revokeCertificate(bytes32 cert_hash, address actor) 
+function revokeCertificate(bytes32 cert_hash, address actor)
     public onlyAuthorized {
     require(certificates[cert_hash].exists, "Certificate does not exist");
     require(!certificates[cert_hash].is_revoked, "Already revoked");
-    
+
     certificates[cert_hash].is_revoked = true;
-    
+
     emit CertificateRevoked(cert_hash, actor, block.number);
 }
 ```
 
 **3. Audit log created:**
+
 - Event `CertificateRevoked` is permanent
 - Shows who revoked it and when
 - Can be queried later
@@ -341,8 +369,9 @@ function revokeCertificate(bytes32 cert_hash, address actor)
 ### Reactivate
 
 Same process but sets `is_revoked = false`:
+
 ```solidity
-function reactivateCertificate(bytes32 cert_hash, address actor) 
+function reactivateCertificate(bytes32 cert_hash, address actor)
     public onlyAuthorized {
     certificates[cert_hash].is_revoked = false;
     emit CertificateReactivated(cert_hash, actor, block.number);
@@ -360,12 +389,14 @@ A student can have multiple certificates (e.g., Bachelor's, Master's). Each is a
 ### How It Works
 
 **1. Smart contract tracks versions:**
+
 ```solidity
 mapping(string => uint256) public student_to_latest_version;
 mapping(string => bytes32[]) public student_certificates;
 ```
 
 **2. When issuing new certificate:**
+
 ```solidity
 uint256 version = student_to_latest_version[student_id] + 1;
 student_certificates[student_id].push(cert_hash);
@@ -373,22 +404,24 @@ student_to_latest_version[student_id] = version;
 ```
 
 **3. Getting all versions:**
+
 ```typescript
 const hashes = await certificateContract.getAllVersions(student_id);
 // Returns: ["0x5a15dc...", "0x63516a...", "0x9794d6..."]
 
 // Then fetch each certificate
 const certificates = await Promise.all(
-  hashes.map(hash => certificateContract.verifyCertificate(hash))
+  hashes.map((hash) => certificateContract.verifyCertificate(hash))
 );
 ```
 
 **4. Getting latest active:**
+
 ```solidity
-function getActiveCertificate(string memory student_id) 
+function getActiveCertificate(string memory student_id)
     public view returns (Certificate memory) {
     bytes32[] memory hashes = student_certificates[student_id];
-    
+
     // Search backwards for latest non-revoked
     for (uint i = hashes.length; i > 0; i--) {
         Certificate memory cert = certificates[hashes[i-1]];
@@ -396,7 +429,7 @@ function getActiveCertificate(string memory student_id)
             return cert;
         }
     }
-    
+
     revert("No active certificate");
 }
 ```
@@ -412,6 +445,7 @@ Every blockchain action emits an **event**. Events are permanent logs you can qu
 ### Event Examples
 
 **UserRegistered:**
+
 ```solidity
 event UserRegistered(
     address indexed wallet_address,
@@ -422,6 +456,7 @@ event UserRegistered(
 ```
 
 **CertificateIssued:**
+
 ```solidity
 event CertificateIssued(
     bytes32 indexed cert_hash,
@@ -433,6 +468,7 @@ event CertificateIssued(
 ```
 
 **CertificateRevoked:**
+
 ```solidity
 event CertificateRevoked(
     bytes32 indexed cert_hash,
@@ -444,28 +480,31 @@ event CertificateRevoked(
 ### Querying Events
 
 **1. Backend filters events:**
+
 ```typescript
 const issuedFilter = certificateContract.filters.CertificateIssued();
 const events = await certificateContract.queryFilter(issuedFilter);
 ```
 
 **2. Process event data:**
+
 ```typescript
 for (const event of events) {
   const block = await provider.getBlock(event.blockNumber);
-  
+
   const auditLog = {
-    action: 'ISSUED',
+    action: "ISSUED",
     cert_hash: event.args.cert_hash,
     issuer: event.args.issuer,
     block_number: event.blockNumber,
     transaction_hash: event.transactionHash,
-    timestamp: new Date(block.timestamp * 1000).toISOString()
+    timestamp: new Date(block.timestamp * 1000).toISOString(),
   };
 }
 ```
 
 **Why Events Matter:**
+
 - Complete audit trail
 - Cannot be altered
 - Timestamp from blockchain
@@ -482,18 +521,21 @@ for (const event of events) {
 ### Transaction Lifecycle
 
 **1. Create transaction:**
+
 ```typescript
 const tx = await contract.registerUser(...);
 // Returns transaction object (not confirmed yet)
 ```
 
 **2. Wait for confirmation:**
+
 ```typescript
 const receipt = await tx.wait();
 // Waits for blockchain miners to include it in a block
 ```
 
 **3. Receipt contains:**
+
 ```typescript
 {
   hash: "0x1234...",           // Transaction ID
@@ -504,6 +546,7 @@ const receipt = await tx.wait();
 ```
 
 **Operations & Cost:**
+
 - Read (view functions): **FREE** (no gas)
 - Write (state changes): **Costs gas**
 - Example: `registerUser` ≈ 100,000 gas
@@ -529,6 +572,7 @@ modifier onlyAuthorized() {
 ```
 
 **Usage:**
+
 ```solidity
 function registerUser(...) public onlyAdmin {
     // Only admins can register users
@@ -540,6 +584,7 @@ function issueCertificate(...) public onlyAuthorized {
 ```
 
 **How It Works:**
+
 - `msg.sender` = Wallet address that called the function
 - Contract checks if that address has the required permission
 - Reverts if not authorized
@@ -549,6 +594,7 @@ function issueCertificate(...) public onlyAuthorized {
 ## 10. Data Flow Summary
 
 ### Registration
+
 ```
 User submits form
     ↓
@@ -566,6 +612,7 @@ User gets private key (save it!)
 ```
 
 ### Login
+
 ```
 User provides private key
     ↓
@@ -581,6 +628,7 @@ JWT token issued
 ```
 
 ### Certificate Issuance
+
 ```
 Admin submits certificate data
     ↓
@@ -600,6 +648,7 @@ Certificate hash returned
 ```
 
 ### Verification
+
 ```
 Anyone provides certificate hash
     ↓
@@ -622,7 +671,7 @@ Response with all details
 ✅ **Auditable**: Every action is logged permanently  
 ✅ **Cryptographic**: Signatures prove authenticity  
 ✅ **Versioned**: Students can have multiple certificates  
-✅ **Access Controlled**: Only authorized users can write  
+✅ **Access Controlled**: Only authorized users can write
 
 ---
 
@@ -651,15 +700,18 @@ A: **Trust**. Anyone can verify certificates without trusting your server. Data 
 ## Files to Explore
 
 **Smart Contracts:**
+
 - `contracts/UserRegistry.sol` - User registration logic
 - `contracts/CertificateRegistry.sol` - Certificate management logic
 
 **Backend Integration:**
+
 - `services/blockchain-client.service.ts` - Connects to blockchain
 - `services/user-blockchain.service.ts` - User operations
 - `services/certificate-blockchain.service.ts` - Certificate operations
 - `services/audit-blockchain.service.ts` - Event querying
 
 **Deployment:**
+
 - `scripts/deploy-dev.js` - Deploys both contracts
 - `scripts/seed-admin.js` - Creates first admin user
