@@ -180,7 +180,7 @@ export function Footer() {
           <span className="text-muted-foreground">•</span>
           <p className="text-muted-foreground">
             Developed by{" "}
-            <span className="text-foreground font-semibold">Nocillax</span>
+            <span className="text-foreground font-semibold">nocillax</span>
           </p>
         </div>
       </div>

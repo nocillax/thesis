@@ -86,55 +86,58 @@ export default function CertificateDetailPage({
   return (
     <div className="container py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          size="sm"
-          className="sm:size-default"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
+            <Award className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">
+              Certificate Details
+            </h1>
+            <p className="text-muted-foreground font-bold">
+              {certificate.student_id}
+            </p>
+          </div>
+        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={handleDownloadPDF}
-            size="sm"
-            className="sm:size-default"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Download PDF</span>
-            <span className="sm:hidden">PDF</span>
+        <div className="flex items-center justify-between gap-4">
+          <Button variant="ghost" onClick={() => router.back()} size="lg">
+            <ArrowLeft className="mr-2 h-5 w-5" />
+            Back
           </Button>
-          {user?.is_authorized && (
-            <>
-              {certificate.is_revoked ? (
-                <Button
-                  variant="outline"
-                  onClick={() => reactivate(certificate.cert_hash)}
-                  disabled={isReactivating}
-                  size="sm"
-                  className="sm:size-default"
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Reactivate
-                </Button>
-              ) : (
-                <Button
-                  variant="destructive"
-                  onClick={() => revoke(certificate.cert_hash)}
-                  disabled={isRevoking}
-                  size="sm"
-                  className="sm:size-default"
-                >
-                  <Ban className="mr-2 h-4 w-4" />
-                  Revoke
-                </Button>
-              )}
-            </>
-          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={handleDownloadPDF} size="lg">
+              <Download className="mr-2 h-5 w-5" />
+              Download PDF
+            </Button>
+            {user?.is_authorized && (
+              <>
+                {certificate.is_revoked ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => reactivate(certificate.cert_hash)}
+                    disabled={isReactivating}
+                    size="lg"
+                  >
+                    <RefreshCw className="mr-2 h-5 w-5" />
+                    Reactivate
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    onClick={() => revoke(certificate.cert_hash)}
+                    disabled={isRevoking}
+                    size="lg"
+                  >
+                    <Ban className="mr-2 h-5 w-5" />
+                    Revoke
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -144,7 +147,7 @@ export default function CertificateDetailPage({
           <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
             <div className="text-center space-y-4">
               <LoadingSpinner size="lg" />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground font-medium">
                 Generating certificate preview...
               </p>
             </div>
@@ -162,23 +165,29 @@ export default function CertificateDetailPage({
       <div className="grid gap-6 md:grid-cols-3 mb-6">
         {/* Certificate Metadata */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileSignature className="h-4 w-4" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <FileSignature className="h-5 w-5" />
               Certificate Metadata
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">Status</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Status
+              </p>
               <StatusBadge isActive={!certificate.is_revoked} />
             </div>
             <div>
-              <p className="text-muted-foreground">Issuer</p>
-              <p className="font-medium">{certificate.issuer_name}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Issuer
+              </p>
+              <p className="font-semibold">{certificate.issuer_name}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Version</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Version
+              </p>
               <p className="font-mono font-semibold">v{certificate.version}</p>
             </div>
           </CardContent>
@@ -186,50 +195,64 @@ export default function CertificateDetailPage({
 
         {/* Certificate Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Award className="h-4 w-4" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Award className="h-5 w-5" />
               Academic Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">Student ID</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Student ID
+              </p>
               <p className="font-mono font-semibold">
                 {certificate.student_id}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Student Name</p>
-              <p className="font-medium">{certificate.student_name}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Student Name
+              </p>
+              <p className="font-semibold">{certificate.student_name}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">CGPA</p>
-              <p className="font-semibold">{formatCGPA(certificate.cgpa)}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                CGPA
+              </p>
+              <p className="font-bold text-lg">
+                {formatCGPA(certificate.cgpa)}
+              </p>
             </div>
           </CardContent>
         </Card>
 
         {/* Program Details */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building className="h-4 w-4" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Building className="h-5 w-5" />
               Program Information
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">Degree</p>
-              <p className="font-medium">{certificate.degree}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Degree
+              </p>
+              <p className="font-semibold">{certificate.degree}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Program</p>
-              <p className="font-medium">{certificate.program}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Program
+              </p>
+              <p className="font-semibold">{certificate.program}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Issuing Authority</p>
-              <p className="font-medium">{certificate.issuing_authority}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Issuing Authority
+              </p>
+              <p className="font-semibold">{certificate.issuing_authority}</p>
             </div>
           </CardContent>
         </Card>
@@ -237,19 +260,19 @@ export default function CertificateDetailPage({
 
       {/* Blockchain Details */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Blocks className="h-4 w-4" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-bold flex items-center gap-2">
+            <Blocks className="h-5 w-5" />
             Blockchain Details
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
               Certificate Hash
             </p>
             <div className="flex items-center gap-2">
-              <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden break-all md:break-normal">
+              <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden break-all md:break-normal font-mono">
                 <span className="hidden md:inline">
                   {certificate.cert_hash}
                 </span>
@@ -262,11 +285,11 @@ export default function CertificateDetailPage({
           </div>
 
           <div>
-            <p className="text-sm text-muted-foreground mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
               Issuer Wallet Address
             </p>
             <div className="flex items-center gap-2">
-              <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden break-all md:break-normal">
+              <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden break-all md:break-normal font-mono">
                 <span className="hidden md:inline">{certificate.issuer}</span>
                 <span className="md:hidden">
                   {truncateHash(certificate.issuer)}
@@ -277,11 +300,11 @@ export default function CertificateDetailPage({
           </div>
 
           <div>
-            <p className="text-sm text-muted-foreground mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
               Digital Signature
             </p>
             <div className="flex items-center gap-2">
-              <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden break-all md:break-normal">
+              <code className="text-xs bg-accent px-2 py-1 rounded border flex-1 overflow-hidden break-all md:break-normal font-mono">
                 <span className="hidden md:inline">
                   {certificate.signature}
                 </span>
@@ -294,12 +317,12 @@ export default function CertificateDetailPage({
           </div>
 
           <div className="pt-4 flex gap-2">
-            <Button variant="outline" asChild className="flex-1">
+            <Button variant="outline" asChild className="flex-1" size="lg">
               <Link href={`/certificates/student/${certificate.student_id}`}>
                 Show All Versions
               </Link>
             </Button>
-            <Button variant="outline" asChild className="flex-1">
+            <Button variant="outline" asChild className="flex-1" size="lg">
               <Link href={`/audit-logs/certificate/${certificate.cert_hash}`}>
                 Audit Logs
               </Link>
