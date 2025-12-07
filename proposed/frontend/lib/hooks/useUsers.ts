@@ -4,17 +4,17 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { usersAPI } from "@/lib/api/users";
+import { usersAPI, UserFilters } from "@/lib/api/users";
 import { toast } from "sonner";
 
 // Infinite query for users list with auto-refetch (polling)
 export function useUsers(
-  status?: "authorized" | "revoked" | "admin",
+  filters?: UserFilters,
   shouldPoll: boolean = true
 ) {
   return useInfiniteQuery({
-    queryKey: ["users", status],
-    queryFn: ({ pageParam = 1 }) => usersAPI.getAll(pageParam, 20, status),
+    queryKey: ["users", filters],
+    queryFn: ({ pageParam = 1 }) => usersAPI.getAll(pageParam, 20, filters),
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_more ? lastPage.meta.current_page + 1 : undefined,
     initialPageParam: 1,

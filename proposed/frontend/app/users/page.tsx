@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserPlus, Loader2, Users as UsersIcon } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUsers } from "@/lib/hooks/useUsers";
+import { UserFilters } from "@/components/users/UserFilters";
 import { UserTable } from "@/components/users/UserTable";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { UserFilters as UserFiltersType } from "@/lib/api/users";
+import {
+  loadUserFilters,
+  saveUserFilters,
+} from "@/lib/utils/filterStorage";
 
 export default function UsersPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Initialize filters from localStorage
+  const [filters, setFilters] = useState<UserFiltersType>(() => {
+    if (typeof window !== "undefined" && user?.wallet_address) {
+      return loadUserFilters(user.wallet_address) || {};
+    }
+    return {};
+  });
 
   const {
     data,
@@ -25,7 +39,7 @@ export default function UsersPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useUsers();
+  } = useUsers(filters);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -34,6 +48,17 @@ export default function UsersPage() {
       router.push("/dashboard");
     }
   }, [isAuthenticated, user, authLoading, router]);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    if (user?.wallet_address) {
+      saveUserFilters(filters, user.wallet_address);
+    }
+  }, [filters, user?.wallet_address]);
+
+  const handleFiltersChange = (newFilters: UserFiltersType) => {
+    setFilters(newFilters);
+  };
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -128,7 +153,15 @@ export default function UsersPage() {
       {/* User Table */}
       {!isError && allUsers.length > 0 && (
         <>
-          <UserTable data={allUsers} />
+          <UserTable
+            data={allUsers}
+            filterComponent={
+              <UserFilters
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+              />
+            }
+          />
 
           {/* Load More Trigger & Button */}
           <div ref={loadMoreRef} className="mt-8 flex justify-center">

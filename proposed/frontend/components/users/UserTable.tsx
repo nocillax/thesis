@@ -56,9 +56,10 @@ import {
 
 interface UserTableProps {
   data: User[];
+  filterComponent?: React.ReactNode;
 }
 
-export function UserTable({ data }: UserTableProps) {
+export function UserTable({ data, filterComponent }: UserTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -150,11 +151,47 @@ export function UserTable({ data }: UserTableProps) {
     },
     {
       accessorKey: "email",
-      header: "Email",
+      header: ({ column }) => {
+        const isSorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="flex items-center gap-1"
+          >
+            Email
+            {isSorted === "asc" ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : isSorted === "desc" ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="h-4 w-4" />
+            )}
+          </Button>
+        );
+      },
     },
     {
       accessorKey: "is_authorized",
-      header: "Status",
+      header: ({ column }) => {
+        const isSorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="flex items-center gap-1"
+          >
+            Status
+            {isSorted === "asc" ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : isSorted === "desc" ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="h-4 w-4" />
+            )}
+          </Button>
+        );
+      },
       cell: ({ row }) => (
         <StatusBadge isActive={row.original.is_authorized} type="user" />
       ),
@@ -239,78 +276,83 @@ export function UserTable({ data }: UserTableProps) {
       )}
 
       {/* Always Visible Toolbar with 4 Separate Buttons */}
-      <div className="flex items-center gap-2 p-4 border rounded-lg bg-accent/50">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkRevoke}
-                disabled={selectedCount === 0 || isAnyOperationPending}
-              >
-                <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
-                  <Lock className="h-3 w-3 text-red-700 dark:text-red-300" />
-                </div>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Revoke Access</TooltipContent>
-          </Tooltip>
+      <div className="flex items-center justify-between gap-2 p-4 border rounded-lg bg-accent/50">
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkRevoke}
+                  disabled={selectedCount === 0 || isAnyOperationPending}
+                >
+                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
+                    <Lock className="h-3 w-3 text-red-700 dark:text-red-300" />
+                  </div>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Revoke Access</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkReactivate}
-                disabled={selectedCount === 0 || isAnyOperationPending}
-              >
-                <div className="rounded-full bg-green-100 dark:bg-green-900 p-1">
-                  <Unlock className="h-3 w-3 text-green-700 dark:text-green-300" />
-                </div>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Authorize Access</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkReactivate}
+                  disabled={selectedCount === 0 || isAnyOperationPending}
+                >
+                  <div className="rounded-full bg-green-100 dark:bg-green-900 p-1">
+                    <Unlock className="h-3 w-3 text-green-700 dark:text-green-300" />
+                  </div>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Authorize Access</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkGrantAdmin}
-                disabled={selectedCount === 0 || isAnyOperationPending}
-              >
-                <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-1">
-                  <ShieldCheck className="h-3 w-3 text-blue-700 dark:text-blue-300" />
-                </div>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Grant Admin Access</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkGrantAdmin}
+                  disabled={selectedCount === 0 || isAnyOperationPending}
+                >
+                  <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-1">
+                    <ShieldCheck className="h-3 w-3 text-blue-700 dark:text-blue-300" />
+                  </div>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Grant Admin Access</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkRevokeAdmin}
-                disabled={selectedCount === 0 || isAnyOperationPending}
-              >
-                <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-1">
-                  <ShieldX className="h-3 w-3 text-gray-700 dark:text-gray-300" />
-                </div>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Revoke Admin Access</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkRevokeAdmin}
+                  disabled={selectedCount === 0 || isAnyOperationPending}
+                >
+                  <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-1">
+                    <ShieldX className="h-3 w-3 text-gray-700 dark:text-gray-300" />
+                  </div>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Revoke Admin Access</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-        {selectedCount > 0 && (
-          <span className="text-sm text-muted-foreground ml-2">
-            {selectedCount} of {data.length} selected
-          </span>
-        )}
+          {selectedCount > 0 && (
+            <span className="text-sm text-muted-foreground ml-2">
+              {selectedCount} of {data.length} selected
+            </span>
+          )}
+        </div>
+        
+        {/* Filters on the right */}
+        {filterComponent && <div>{filterComponent}</div>}
       </div>
 
       {/* Table */}

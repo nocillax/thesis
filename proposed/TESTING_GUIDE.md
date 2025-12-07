@@ -181,7 +181,9 @@ Authorization: Bearer YOUR_TOKEN
 
 - `page` - Page number (default: return all)
 - `limit` - Items per page (default: return all)
-- `status` - Filter by status: `authorized` or `revoked`
+- `status` - Filter by authorization status: `authorized` or `revoked`
+- `is_admin` - Filter by admin role: `true` or `false`
+- `hide_revoked` - Hide revoked users: `true` or `false` (when true, only shows authorized users)
 
 **Examples:**
 
@@ -197,6 +199,18 @@ GET /api/blockchain/users?page=2&limit=10&status=authorized
 
 # Get revoked users
 GET /api/blockchain/users?status=revoked
+
+# Get only admin users
+GET /api/blockchain/users?is_admin=true
+
+# Get non-admin users who are authorized
+GET /api/blockchain/users?is_admin=false&status=authorized
+
+# Hide all revoked users (show only authorized)
+GET /api/blockchain/users?hide_revoked=true
+
+# Combine filters: page 1, admins only, hide revoked
+GET /api/blockchain/users?page=1&limit=20&is_admin=true&hide_revoked=true
 ```
 
 **Response (without pagination):**
@@ -439,7 +453,8 @@ Authorization: Bearer YOUR_TOKEN
 
 - `page` - Page number (default: return all)
 - `limit` - Items per page (default: return all)
-- `status` - Filter by status: `active` or `revoked`
+- `status` - Filter by certificate status: `active` or `revoked`
+- `hide_revoked` - Hide revoked certificates: `true` or `false` (when true, only shows active certificates)
 
 **Examples:**
 
@@ -455,6 +470,12 @@ GET /api/blockchain/certificates?page=2&limit=10&status=active
 
 # Get revoked certificates
 GET /api/blockchain/certificates?status=revoked
+
+# Hide all revoked certificates (show only active)
+GET /api/blockchain/certificates?hide_revoked=true
+
+# Combine filters: page 1, hide revoked
+GET /api/blockchain/certificates?page=1&limit=20&hide_revoked=true
 ```
 
 **Response (without pagination):**

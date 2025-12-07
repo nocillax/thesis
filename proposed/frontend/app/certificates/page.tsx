@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PlusCircle, Loader2, FileText } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCertificates } from "@/lib/hooks/useCertificates";
+import { CertificateFilters } from "@/components/certificates/CertificateFilters";
 import { CertificateTable } from "@/components/certificates/CertificateTable";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { CertificateFilters as CertificateFiltersType } from "@/lib/api/certificates";
+import {
+  loadCertificateFilters,
+  saveCertificateFilters,
+} from "@/lib/utils/filterStorage";
 
 export default function CertificatesPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Initialize filters from localStorage
+  const [filters, setFilters] = useState<CertificateFiltersType>(() => {
+    if (typeof window !== "undefined" && user?.wallet_address) {
+      return loadCertificateFilters(user.wallet_address) || {};
+    }
+    return {};
+  });
 
   const {
     data,
@@ -25,13 +39,24 @@ export default function CertificatesPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useCertificates();
+  } = useCertificates(filters);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login");
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    if (user?.wallet_address) {
+      saveCertificateFilters(filters, user.wallet_address);
+    }
+  }, [filters, user?.wallet_address]);
+
+  const handleFiltersChange = (newFilters: CertificateFiltersType) => {
+    setFilters(newFilters);
+  };
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -126,7 +151,15 @@ export default function CertificatesPage() {
       {/* Certificate Table */}
       {!isError && allCertificates.length > 0 && (
         <>
-          <CertificateTable data={allCertificates} />
+          <CertificateTable
+            data={allCertificates}
+            filterComponent={
+              <CertificateFilters
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+              />
+            }
+          />
 
           {/* Load More Trigger & Button */}
           <div ref={loadMoreRef} className="mt-8 flex justify-center">

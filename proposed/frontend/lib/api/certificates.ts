@@ -5,18 +5,24 @@ import {
   PaginatedResponse,
 } from "@/types/certificate";
 
+export interface CertificateFilters {
+  status?: "active" | "revoked";
+  hide_revoked?: boolean;
+}
+
 export const certificatesAPI = {
   // Get all certificates with pagination
   getAll: async (
     page: number = 1,
     limit: number = 20,
-    status?: "active" | "revoked"
+    filters?: CertificateFilters
   ): Promise<PaginatedResponse<Certificate>> => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
-    if (status) params.append("status", status);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.hide_revoked) params.append("hide_revoked", "true");
     const response = await apiClient.get(
       `/api/blockchain/certificates?${params}`
     );

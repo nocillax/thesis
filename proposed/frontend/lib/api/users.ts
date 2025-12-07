@@ -2,18 +2,26 @@ import { apiClient } from "./client";
 import { User, RegisterUserDTO } from "@/types/user";
 import { PaginatedResponse } from "@/types/certificate";
 
+export interface UserFilters {
+  status?: "authorized" | "revoked";
+  is_admin?: boolean;
+  hide_revoked?: boolean;
+}
+
 export const usersAPI = {
   // Get all users with pagination (admin only)
   getAll: async (
     page: number = 1,
     limit: number = 20,
-    status?: "authorized" | "revoked" | "admin"
+    filters?: UserFilters
   ): Promise<PaginatedResponse<User>> => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
-    if (status) params.append("status", status);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.is_admin !== undefined) params.append("is_admin", filters.is_admin.toString());
+    if (filters?.hide_revoked) params.append("hide_revoked", "true");
     const response = await apiClient.get(`/api/blockchain/users?${params}`);
     return response.data;
   },

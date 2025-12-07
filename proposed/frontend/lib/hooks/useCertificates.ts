@@ -4,18 +4,18 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { certificatesAPI } from "@/lib/api/certificates";
+import { certificatesAPI, CertificateFilters } from "@/lib/api/certificates";
 import { toast } from "sonner";
 
 // Infinite query for certificates list
 export function useCertificates(
-  status?: "active" | "revoked",
+  filters?: CertificateFilters,
   shouldPoll: boolean = true
 ) {
   return useInfiniteQuery({
-    queryKey: ["certificates", status],
+    queryKey: ["certificates", filters],
     queryFn: ({ pageParam = 1 }) =>
-      certificatesAPI.getAll(pageParam, 20, status),
+      certificatesAPI.getAll(pageParam, 20, filters),
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_more ? lastPage.meta.current_page + 1 : undefined,
     initialPageParam: 1,

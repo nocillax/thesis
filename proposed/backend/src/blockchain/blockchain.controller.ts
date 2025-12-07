@@ -60,15 +60,31 @@ export class BlockchainController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: 'authorized' | 'revoked',
+    @Query('is_admin') is_admin?: string,
+    @Query('hide_revoked') hide_revoked?: string,
   ) {
     const allUsers = await this.blockchainService.getAllUsersFromBlockchain();
 
-    // Filter by status if provided
+    // Apply filters
     let filtered = allUsers;
+    
+    // Filter by authorization status
     if (status === 'authorized') {
-      filtered = allUsers.filter((u) => u.is_authorized);
+      filtered = filtered.filter((u) => u.is_authorized);
     } else if (status === 'revoked') {
-      filtered = allUsers.filter((u) => !u.is_authorized);
+      filtered = filtered.filter((u) => !u.is_authorized);
+    }
+    
+    // Filter by admin role
+    if (is_admin === 'true') {
+      filtered = filtered.filter((u) => u.is_admin);
+    } else if (is_admin === 'false') {
+      filtered = filtered.filter((u) => !u.is_admin);
+    }
+    
+    // Hide revoked users
+    if (hide_revoked === 'true') {
+      filtered = filtered.filter((u) => u.is_authorized);
     }
 
     // Return all if no pagination params
@@ -169,15 +185,23 @@ export class BlockchainController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: 'active' | 'revoked',
+    @Query('hide_revoked') hide_revoked?: string,
   ) {
     const allCerts = await this.blockchainService.getAllCertificates();
 
-    // Filter by status if provided
+    // Apply filters
     let filtered = allCerts;
+    
+    // Filter by status
     if (status === 'active') {
-      filtered = allCerts.filter((c) => !c.is_revoked);
+      filtered = filtered.filter((c) => !c.is_revoked);
     } else if (status === 'revoked') {
-      filtered = allCerts.filter((c) => c.is_revoked);
+      filtered = filtered.filter((c) => c.is_revoked);
+    }
+    
+    // Hide revoked certificates
+    if (hide_revoked === 'true') {
+      filtered = filtered.filter((c) => !c.is_revoked);
     }
 
     // Return all if no pagination params
