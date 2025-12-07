@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { UserPlus, Loader2, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRegisterUser } from "@/lib/hooks/useUsers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CopyButton } from "@/components/common/CopyButton";
 import {
   Card,
   CardContent,
@@ -46,7 +47,6 @@ export default function RegisterUserPage() {
     address: string;
     privateKey: string;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const {
     register,
@@ -83,16 +83,6 @@ export default function RegisterUserPage() {
   if (!user.is_admin) {
     return null;
   }
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
 
   const onSubmit = (data: RegisterUserForm) => {
     registerUser(
@@ -258,58 +248,71 @@ export default function RegisterUserPage() {
         {/* Private Key Modal */}
         <Dialog
           open={privateKeyModalOpen}
-          onOpenChange={setPrivateKeyModalOpen}
+          onOpenChange={(open) => {
+            // Prevent closing by clicking outside or pressing ESC
+            if (!open) return;
+            setPrivateKeyModalOpen(open);
+          }}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent
+            className="max-w-2xl"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            showCloseButton={false}
+          >
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                <UserPlus className="h-6 w-6 text-primary" />
-                User Registered Successfully
-              </DialogTitle>
-              <DialogDescription>
-                Save the private key securely. It will not be shown again.
-              </DialogDescription>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
+                  <UserPlus className="h-6 w-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-bold tracking-tight">
+                    User Registered Successfully
+                  </DialogTitle>
+                  <DialogDescription className="text-muted-foreground font-medium mt-1">
+                    Save the private key. It will not be shown again.
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
             {generatedKeys && (
               <div className="space-y-6 py-4">
                 {/* Wallet Address */}
                 <div className="space-y-2">
-                  <Label>Wallet Address</Label>
+                  <Label className="text-xs font-bold uppercase tracking-wide">
+                    Wallet Address
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       value={generatedKeys.address}
                       readOnly
-                      className="font-mono text-xs"
+                      className="font-mono text-xs bg-accent"
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(generatedKeys.address)}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
+                    <CopyButton
+                      text={generatedKeys.address}
+                      label="Copy Address"
+                    />
                   </div>
                 </div>
 
                 {/* Private Key */}
                 <div className="space-y-2">
-                  <Label>Private Key</Label>
+                  <Label className="text-xs font-bold uppercase tracking-wide">
+                    Private Key
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       value={generatedKeys.privateKey}
                       readOnly
                       type={showPrivateKey ? "text" : "password"}
-                      className="font-mono text-xs"
+                      className="font-mono text-xs bg-accent"
                     />
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => setShowPrivateKey(!showPrivateKey)}
+                      className="h-8 w-8 p-0"
                     >
                       {showPrivateKey ? (
                         <EyeOff className="h-4 w-4" />
@@ -317,22 +320,15 @@ export default function RegisterUserPage() {
                         <Eye className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(generatedKeys.privateKey)}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
+                    <CopyButton
+                      text={generatedKeys.privateKey}
+                      label="Copy Private Key"
+                    />
                   </div>
                 </div>
 
                 {/* Warning */}
-                <div className="p-4 rounded-lg border border-destructive bg-destructive/10">
+                <div className="p-4 rounded-md border border-destructive bg-destructive/10">
                   <p className="text-sm text-destructive font-medium">
                     ⚠️ Store this private key securely. It cannot be recovered
                     if lost.
@@ -340,7 +336,7 @@ export default function RegisterUserPage() {
                 </div>
 
                 {/* Close Button */}
-                <Button onClick={handleCloseModal} className="w-full">
+                <Button onClick={handleCloseModal} className="w-full" size="lg">
                   I've Saved the Private Key
                 </Button>
               </div>

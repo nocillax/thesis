@@ -56,9 +56,9 @@ export function Footer() {
 
   return (
     <footer className="border-t bg-background relative mt-16 z-0">
-      <div className="container py-8">
+      <div className="container py-14">
         {/* Section 1: Three Column Grid - Logo, Links, Social */}
-        <div className="grid md:grid-cols-3 gap-8 mb-8 pb-6 border-b">
+        <div className="grid md:grid-cols-3 gap-8 mb-8 pb-6 ">
           {/* Left: Logo & Name - Left Aligned */}
           <div className="flex justify-center md:justify-start">
             <div className="flex flex-col items-center gap-2">
