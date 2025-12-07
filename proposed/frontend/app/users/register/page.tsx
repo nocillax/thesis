@@ -125,26 +125,39 @@ export default function RegisterUserPage() {
   return (
     <div className="container py-8">
       <div className="max-w-2xl mx-auto">
-        <Card className="border-2">
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-                <UserPlus className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <CardTitle>Register New User</CardTitle>
-                <CardDescription>
-                  Create a new authorized user account
-                </CardDescription>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mx-auto mb-4">
+            <UserPlus className="h-8 w-8 text-primary-foreground" />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">
+            Register New User
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Create a new authorized user account with blockchain wallet
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-bold">
+              User Information
+            </CardTitle>
+            <CardDescription className="font-medium">
+              Fill in all required fields to register a new user
+            </CardDescription>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Username */}
               <div className="space-y-2">
-                <Label htmlFor="username">Username *</Label>
+                <Label
+                  htmlFor="username"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Username *
+                </Label>
                 <Input
                   id="username"
                   placeholder="e.g., johndoe"
@@ -152,7 +165,7 @@ export default function RegisterUserPage() {
                   disabled={isPending}
                 />
                 {errors.username && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.username.message}
                   </p>
                 )}
@@ -160,7 +173,12 @@ export default function RegisterUserPage() {
 
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
+                <Label
+                  htmlFor="email"
+                  className="text-xs font-bold uppercase tracking-wide"
+                >
+                  Email *
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -169,7 +187,7 @@ export default function RegisterUserPage() {
                   disabled={isPending}
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive font-medium">
                     {errors.email.message}
                   </p>
                 )}
@@ -187,7 +205,7 @@ export default function RegisterUserPage() {
                 />
                 <Label
                   htmlFor="is_admin"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
                   Grant admin privileges
                 </Label>
@@ -195,7 +213,7 @@ export default function RegisterUserPage() {
 
               {/* Info Box */}
               <div className="p-4 rounded-lg border bg-accent/50">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground font-medium">
                   <strong>Note:</strong> A new blockchain wallet will be
                   generated for this user. The private key will be displayed
                   only once after registration.
@@ -204,15 +222,20 @@ export default function RegisterUserPage() {
 
               {/* Submit Buttons */}
               <div className="flex gap-4 pt-4">
-                <Button type="submit" disabled={isPending} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  size="lg"
+                  className="flex-1 font-semibold"
+                >
                   {isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registering...
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Registering User...
                     </>
                   ) : (
                     <>
-                      <UserPlus className="mr-2 h-4 w-4" />
+                      <UserPlus className="mr-2 h-5 w-5" />
                       Register User
                     </>
                   )}
@@ -220,8 +243,10 @@ export default function RegisterUserPage() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="lg"
                   onClick={() => router.push("/users")}
                   disabled={isPending}
+                  className="font-semibold"
                 >
                   Cancel
                 </Button>

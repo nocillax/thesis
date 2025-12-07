@@ -116,7 +116,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Username
             {isSorted === "asc" ? (
@@ -157,7 +157,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Email
             {isSorted === "asc" ? (
@@ -179,7 +179,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 -ml-4"
           >
             Status
             {isSorted === "asc" ? (
