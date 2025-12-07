@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
@@ -9,7 +10,7 @@ import {
   Copy,
   User as UserIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { truncateAddress } from "@/lib/utils/format";
 import { SearchCommand } from "./SearchCommand";
+import { useTheme } from "next-themes";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { UserAvatar } from "@/components/common/UserAvatar";
 
@@ -31,6 +33,13 @@ export function Header() {
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme } = useTheme();
+  const [logoSrc, setLogoSrc] = useState("/logo-dark.png");
+
+  useEffect(() => {
+    // Set the logo based on the theme.
+    setLogoSrc(theme === "dark" ? "/logo-light.png" : "/logo-dark.png");
+  }, [theme]);
 
   const handleLogout = () => {
     logout();
@@ -54,15 +63,10 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
-            {/* Placeholder for logo - replace logo-light.jpg and logo-dark.jpg in /public */}
-            <span className="text-primary-foreground font-bold text-lg">
-              NX
-            </span>
+          <div className="relative h-9 w-9">
+            <Image src={logoSrc} alt="NXCertify Logo" fill sizes="36px" />
           </div>
-          <span className="text-xl font-bold text-secondary-foreground">
-            NXCertify
-          </span>
+          <span className="text-xl font-bold text-foreground">NXCertify</span>
         </Link>
 
         {/* Desktop Navigation */}
