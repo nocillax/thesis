@@ -55,16 +55,16 @@ export function CertificateFilters({
             <Filter className="mr-2 h-4 w-4" />
             Filters
             {activeFilterCount > 0 && (
-              <Badge
-                className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-secondary"
-              >
+              <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-secondary">
                 {activeFilterCount}
               </Badge>
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuLabel className="text-secondary-foreground font-semibold">Status</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-secondary-foreground font-semibold">
+            Status
+          </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => setStatus(undefined)}
             className={filters.status === undefined ? "bg-accent" : ""}

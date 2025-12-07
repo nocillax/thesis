@@ -11,33 +11,36 @@ const USER_WALLET_KEY = "current_user_wallet";
  */
 export function saveUserFilters(filters: UserFilters, walletAddress: string) {
   const stored = localStorage.getItem(USER_WALLET_KEY);
-  
+
   // Clear filters if user changed
   if (stored && stored !== walletAddress) {
     localStorage.removeItem(USERS_FILTER_KEY);
     localStorage.removeItem(CERTS_FILTER_KEY);
   }
-  
+
   localStorage.setItem(USER_WALLET_KEY, walletAddress);
   localStorage.setItem(USERS_FILTER_KEY, JSON.stringify(filters));
 }
 
-export function saveCertificateFilters(filters: CertificateFilters, walletAddress: string) {
+export function saveCertificateFilters(
+  filters: CertificateFilters,
+  walletAddress: string
+) {
   const stored = localStorage.getItem(USER_WALLET_KEY);
-  
+
   // Clear filters if user changed
   if (stored && stored !== walletAddress) {
     localStorage.removeItem(USERS_FILTER_KEY);
     localStorage.removeItem(CERTS_FILTER_KEY);
   }
-  
+
   localStorage.setItem(USER_WALLET_KEY, walletAddress);
   localStorage.setItem(CERTS_FILTER_KEY, JSON.stringify(filters));
 }
 
 export function loadUserFilters(walletAddress: string): UserFilters | null {
   const stored = localStorage.getItem(USER_WALLET_KEY);
-  
+
   // Clear if user changed
   if (stored && stored !== walletAddress) {
     localStorage.removeItem(USERS_FILTER_KEY);
@@ -45,10 +48,10 @@ export function loadUserFilters(walletAddress: string): UserFilters | null {
     localStorage.setItem(USER_WALLET_KEY, walletAddress);
     return null;
   }
-  
+
   const filtersStr = localStorage.getItem(USERS_FILTER_KEY);
   if (!filtersStr) return null;
-  
+
   try {
     return JSON.parse(filtersStr);
   } catch {
@@ -56,9 +59,11 @@ export function loadUserFilters(walletAddress: string): UserFilters | null {
   }
 }
 
-export function loadCertificateFilters(walletAddress: string): CertificateFilters | null {
+export function loadCertificateFilters(
+  walletAddress: string
+): CertificateFilters | null {
   const stored = localStorage.getItem(USER_WALLET_KEY);
-  
+
   // Clear if user changed
   if (stored && stored !== walletAddress) {
     localStorage.removeItem(USERS_FILTER_KEY);
@@ -66,10 +71,10 @@ export function loadCertificateFilters(walletAddress: string): CertificateFilter
     localStorage.setItem(USER_WALLET_KEY, walletAddress);
     return null;
   }
-  
+
   const filtersStr = localStorage.getItem(CERTS_FILTER_KEY);
   if (!filtersStr) return null;
-  
+
   try {
     return JSON.parse(filtersStr);
   } catch {

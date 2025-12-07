@@ -8,10 +8,7 @@ import { usersAPI, UserFilters } from "@/lib/api/users";
 import { toast } from "sonner";
 
 // Infinite query for users list with auto-refetch (polling)
-export function useUsers(
-  filters?: UserFilters,
-  shouldPoll: boolean = true
-) {
+export function useUsers(filters?: UserFilters, shouldPoll: boolean = true) {
   return useInfiniteQuery({
     queryKey: ["users", filters],
     queryFn: ({ pageParam = 1 }) => usersAPI.getAll(pageParam, 20, filters),

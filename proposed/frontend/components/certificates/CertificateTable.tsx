@@ -52,7 +52,10 @@ interface CertificateTableProps {
   filterComponent?: React.ReactNode;
 }
 
-export function CertificateTable({ data, filterComponent }: CertificateTableProps) {
+export function CertificateTable({
+  data,
+  filterComponent,
+}: CertificateTableProps) {
   const { user } = useAuthStore();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -399,7 +402,7 @@ export function CertificateTable({ data, filterComponent }: CertificateTableProp
             </span>
           )}
         </div>
-        
+
         {/* Filters on the right */}
         {filterComponent && <div>{filterComponent}</div>}
       </div>

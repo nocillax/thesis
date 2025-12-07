@@ -350,7 +350,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
             </span>
           )}
         </div>
-        
+
         {/* Filters on the right */}
         {filterComponent && <div>{filterComponent}</div>}
       </div>

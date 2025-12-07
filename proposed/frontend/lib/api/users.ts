@@ -20,7 +20,8 @@ export const usersAPI = {
       limit: limit.toString(),
     });
     if (filters?.status) params.append("status", filters.status);
-    if (filters?.is_admin !== undefined) params.append("is_admin", filters.is_admin.toString());
+    if (filters?.is_admin !== undefined)
+      params.append("is_admin", filters.is_admin.toString());
     if (filters?.hide_revoked) params.append("hide_revoked", "true");
     const response = await apiClient.get(`/api/blockchain/users?${params}`);
     return response.data;

@@ -13,10 +13,7 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { UserFilters as UserFiltersType } from "@/lib/api/users";
-import {
-  loadUserFilters,
-  saveUserFilters,
-} from "@/lib/utils/filterStorage";
+import { loadUserFilters, saveUserFilters } from "@/lib/utils/filterStorage";
 
 export default function UsersPage() {
   const router = useRouter();

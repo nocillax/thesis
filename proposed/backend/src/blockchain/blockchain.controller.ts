@@ -67,21 +67,21 @@ export class BlockchainController {
 
     // Apply filters
     let filtered = allUsers;
-    
+
     // Filter by authorization status
     if (status === 'authorized') {
       filtered = filtered.filter((u) => u.is_authorized);
     } else if (status === 'revoked') {
       filtered = filtered.filter((u) => !u.is_authorized);
     }
-    
+
     // Filter by admin role
     if (is_admin === 'true') {
       filtered = filtered.filter((u) => u.is_admin);
     } else if (is_admin === 'false') {
       filtered = filtered.filter((u) => !u.is_admin);
     }
-    
+
     // Hide revoked users
     if (hide_revoked === 'true') {
       filtered = filtered.filter((u) => u.is_authorized);
@@ -191,14 +191,14 @@ export class BlockchainController {
 
     // Apply filters
     let filtered = allCerts;
-    
+
     // Filter by status
     if (status === 'active') {
       filtered = filtered.filter((c) => !c.is_revoked);
     } else if (status === 'revoked') {
       filtered = filtered.filter((c) => c.is_revoked);
     }
-    
+
     // Hide revoked certificates
     if (hide_revoked === 'true') {
       filtered = filtered.filter((c) => !c.is_revoked);
