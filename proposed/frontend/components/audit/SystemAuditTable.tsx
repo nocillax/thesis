@@ -59,10 +59,14 @@ export function SystemAuditTable({ logs }: SystemAuditTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Action</TableHead>
-            <TableHead>Certificate Hash</TableHead>
-            <TableHead>Wallet Address</TableHead>
-            <TableHead>When</TableHead>
+            <TableHead className="text-primary font-semibold">Action</TableHead>
+            <TableHead className="text-primary font-semibold">
+              Certificate Hash
+            </TableHead>
+            <TableHead className="text-primary font-semibold">
+              Wallet Address
+            </TableHead>
+            <TableHead className="text-primary font-semibold">When</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -116,7 +116,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4"
+            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
           >
             Username
             {isSorted === "asc" ? (
@@ -157,7 +157,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4"
+            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
           >
             Email
             {isSorted === "asc" ? (
@@ -179,7 +179,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4"
+            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
           >
             Status
             {isSorted === "asc" ? (
@@ -198,7 +198,9 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
     },
     {
       accessorKey: "wallet_address",
-      header: "Wallet Address",
+      header: () => (
+        <span className="text-primary font-semibold">Wallet Address</span>
+      ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <code className="text-xs bg-accent px-2 py-1 rounded border">

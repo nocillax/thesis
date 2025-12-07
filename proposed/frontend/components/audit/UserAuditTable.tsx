@@ -52,9 +52,15 @@ export function UserAuditTable({ logs }: UserAuditTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[25%]">Action</TableHead>
-            <TableHead className="w-[50%]">Certificate Hash</TableHead>
-            <TableHead className="w-[25%]">When</TableHead>
+            <TableHead className="w-[25%] text-primary font-semibold">
+              Action
+            </TableHead>
+            <TableHead className="w-[50%] text-primary font-semibold">
+              Certificate Hash
+            </TableHead>
+            <TableHead className="w-[25%] text-primary font-semibold">
+              When
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
