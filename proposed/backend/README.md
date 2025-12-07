@@ -1,98 +1,254 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NXCertify Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS REST API server for blockchain certificate management with cryptographic wallet authentication.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Setup
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+### 1. Install Dependencies
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 2. Start Quorum Blockchain
+
+Make sure Quorum network is running:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cd ../quorum-test-network
+./run.sh
 ```
 
-## Run tests
+### 3. Deploy Contracts & Seed Admin
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cd ../blockchain
+npm install
+npx hardhat run scripts/seed-admin.js --network quorum
 ```
 
-## Deployment
+Copy the contract addresses from output.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 4. Configure Environment
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Edit `.env` and paste contract addresses:
 
-## Resources
+```env
+# Blockchain
+RPC_URL=http://localhost:8545
+CHAIN_ID=1337
+USER_REGISTRY_ADDRESS=<paste_UserRegistry_address>
+CONTRACT_ADDRESS=<paste_CertificateRegistry_address>
 
-Check out a few resources that may come in handy when working with NestJS:
+# Admin Wallet (from seed-admin output)
+ADMIN_WALLET_ADDRESS=<paste_admin_address>
+ADMIN_PRIVATE_KEY=<paste_admin_private_key>
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# JWT
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRES_IN=30m
 
-## Support
+# CORS
+FRONTEND_URL=http://localhost:3000
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### 5. Start Server
 
-## Stay in touch
+```bash
+# Development
+npm run start:dev
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# Production
+npm run build
+npm run start:prod
+```
 
-## License
+Server runs at **http://localhost:3001**
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+
+## API Overview
+
+Base URL: `http://localhost:3001/api`
+
+### Authentication
+
+**Login (Public)**
+
+```bash
+POST /auth/wallet-login
+{
+  "walletAddress": "0x...",
+  "message": "Login to Certificate System at 2025-12-07T10:30:00.000Z",
+  "signature": "0x..."
+}
+```
+
+### Users (Admin only)
+
+**Register User**
+
+```bash
+POST /blockchain/users/register
+Authorization: Bearer <jwt_token>
+{
+  "username": "john_doe",
+  "email": "john@university.edu",
+  "is_admin": false
+}
+```
+
+**Get All Users**
+
+```bash
+GET /blockchain/users?page=1&limit=20&status=authorized
+Authorization: Bearer <jwt_token>
+```
+
+**Revoke/Reactivate User**
+
+```bash
+PATCH /blockchain/users/:wallet_address/revoke
+PATCH /blockchain/users/:wallet_address/reactivate
+Authorization: Bearer <jwt_token>
+```
+
+**Grant/Revoke Admin**
+
+```bash
+PATCH /blockchain/users/:wallet_address/grant-admin
+PATCH /blockchain/users/:wallet_address/revoke-admin
+Authorization: Bearer <jwt_token>
+```
+
+### Certificates (Authorized users)
+
+**Get All Certificates**
+
+```bash
+GET /blockchain/certificates?page=1&limit=20&status=active
+Authorization: Bearer <jwt_token>
+```
+
+**Issue Certificate**
+
+```bash
+POST /blockchain/certificates
+Authorization: Bearer <jwt_token>
+{
+  "student_id": "22-46734-1",
+  "student_name": "Alice Johnson",
+  "degree_program": "Computer Science",
+  "cgpa": 3.85,
+  "issuing_authority": "Tech University"
+}
+```
+
+**Verify Certificate (Public)**
+
+```bash
+GET /blockchain/certificates/verify/:cert_hash
+```
+
+**Revoke/Reactivate Certificate**
+
+```bash
+PATCH /blockchain/certificates/:cert_hash/revoke
+PATCH /blockchain/certificates/:cert_hash/reactivate
+Authorization: Bearer <jwt_token>
+```
+
+**Get Student Certificates**
+
+```bash
+GET /blockchain/certificates/student/:student_id/active
+GET /blockchain/certificates/student/:student_id/versions
+Authorization: Bearer <jwt_token>
+```
+
+### Audit Logs
+
+**System Logs**
+
+```bash
+GET /blockchain/certificates/audit-logs?page=1&limit=20
+Authorization: Bearer <jwt_token>
+```
+
+**Certificate Logs**
+
+```bash
+GET /blockchain/certificates/audit-logs?cert_hash=0x...
+Authorization: Bearer <jwt_token>
+```
+
+**User Logs**
+
+```bash
+GET /blockchain/certificates/audit-logs/user/:wallet_address
+Authorization: Bearer <jwt_token>
+```
+
+### Search
+
+**Universal Search**
+
+```bash
+GET /blockchain/search?q=22-467
+Authorization: Bearer <jwt_token>
+```
+
+Searches across student IDs, certificate hashes, and wallet addresses.
+
+---
+
+## Response Format
+
+**Success (Single Item)**
+
+```json
+{
+  "success": true,
+  "data": {...}
+}
+```
+
+**Success (Paginated)**
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_count": 95,
+    "has_more": true
+  }
+}
+```
+
+**Error**
+
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "statusCode": 400
+}
+```
+
+---
+
+## Complete API Documentation
+
+See [../TESTING_GUIDE.md](../TESTING_GUIDE.md) for:
+
+- Detailed request/response examples
+- Authentication flow
+- All query parameters
+- Error codes
+- Blockchain architecture

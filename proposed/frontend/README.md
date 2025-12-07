@@ -1,36 +1,168 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NXCertify Frontend
 
-## Getting Started
+Next.js web application for blockchain certificate management with wallet-based authentication.
 
-First, run the development server:
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment
+
+```bash
+cp .env.local.example .env.local
+```
+
+Edit `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+NEXT_PUBLIC_CHAIN_ID=1337
+NEXT_PUBLIC_RPC_URL=http://localhost:8545
+```
+
+### 3. Start Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Application runs at **http://localhost:3000**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Wallet Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Install Wallet Extension
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Install **MetaMask** or **Rabby** browser extension.
 
-## Deploy on Vercel
+### Add Custom Network
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Network Name**: Quorum Local  
+**RPC URL**: `http://localhost:8545`  
+**Chain ID**: `1337`  
+**Currency Symbol**: `ETH`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Import Admin Wallet
+
+1. Get private key from `blockchain/scripts/seed-admin.js` output
+2. In wallet: Add Account → Import Private Key
+3. Paste private key
+
+---
+
+## Features
+
+### Public Pages
+
+- **Landing** (`/`) - Hero, features, verify certificates
+- **Verify** (`/verify`) - Public certificate verification
+- **Login** (`/login`) - Wallet connection and signature
+
+### Authenticated Pages
+
+- **Dashboard** (`/dashboard`) - Overview and quick actions
+- **Certificates** (`/certificates`) - List, filter, bulk actions
+- **Issue Certificate** (`/certificates/issue`) - Form to issue new certificates
+- **Certificate Detail** (`/certificates/[hash]`) - View and manage certificate
+- **Student Versions** (`/certificates/student/[id]`) - All versions for a student
+
+### Admin-Only Pages
+
+- **Users** (`/users`) - List users, bulk actions
+- **Register User** (`/users/register`) - Create new user accounts
+- **User Profile** (`/users/[address]`) - View user and activity history
+- **System Audit** (`/audit-logs/system`) - All certificate actions
+- **Certificate Audit** (`/audit-logs/certificate/[hash]`) - Certificate history
+
+---
+
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: TailwindCSS + shadcn/ui
+- **State**: Zustand (auth), TanStack Query (server state)
+- **Blockchain**: ethers.js v6
+- **Forms**: React Hook Form + Zod
+- **Tables**: TanStack Table
+- **Notifications**: Sonner
+
+---
+
+## Project Structure
+
+```
+app/                    # Pages (Next.js App Router)
+components/
+  ├── audit/           # Audit log tables
+  ├── auth/            # Wallet connect components
+  ├── certificates/    # Certificate forms and tables
+  ├── common/          # Shared components
+  ├── layout/          # Header, footer
+  ├── ui/              # shadcn/ui components
+  └── users/           # User management components
+lib/
+  ├── api/             # API client (axios)
+  ├── blockchain/      # Wallet connection (ethers.js)
+  ├── hooks/           # React Query hooks
+  └── utils/           # Helper functions
+stores/
+  └── authStore.ts     # Zustand auth store
+types/                 # TypeScript types
+```
+
+---
+
+## Development
+
+### Run Linter
+
+```bash
+npm run lint
+```
+
+### Type Check
+
+```bash
+npm run type-check
+```
+
+### Format Code
+
+```bash
+npm run format
+```
+
+---
+
+## Troubleshooting
+
+**Wallet connection fails**
+
+- Ensure MetaMask/Rabby is installed
+- Check custom network is added (Chain ID 1337)
+- Verify Quorum blockchain is running
+
+**API calls fail**
+
+- Verify backend is running at http://localhost:3001
+- Check `.env.local` has correct `NEXT_PUBLIC_API_URL`
+- Inspect browser console for errors
+
+**Login signature rejected**
+
+- Ensure wallet is connected to correct network (Chain ID 1337)
+- Check wallet account is registered in the system
+- Verify account is authorized (not revoked)
