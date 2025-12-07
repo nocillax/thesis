@@ -60,7 +60,7 @@ export default function VerifyPage() {
           </div>
           <h1 className="text-3xl font-bold mb-2">Verify Certificate</h1>
           <p className="text-muted-foreground">
-            Enter a student ID or certificate hash to verify authenticity
+            Enter the certificate hash to verify authenticity
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export default function VerifyPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Enter Student ID or Certificate Hash..."
+                placeholder="Enter or Certificate Hash..."
                 className="flex-1"
                 disabled={isLoading}
               />

@@ -19,6 +19,9 @@ import {
   FileCheck,
   Ban,
   RefreshCw,
+  User as UserIcon,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
@@ -62,7 +65,12 @@ const getActionBadgeVariant = (action: string) => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuthStore();
+  const { isAuthenticated, user, isLoading, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
 
   const {
     data: stats,
@@ -93,42 +101,54 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container py-8">
+    <div className="container py-10">
       {/* Welcome Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
-          Welcome back, {user.username}!
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-3">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Welcome back, <span className="text-primary">{user.username}</span>
+          </h1>
+
           {user.is_admin && (
-            <Shield className="inline-block ml-2 h-7 w-7 text-primary" />
+            <Badge className=" bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-primary/20 font-semibold text-sm px-3 py-1">
+              <ShieldCheck className="h-3 w-3 mr-1" />
+              Admin
+            </Badge>
           )}
-        </h1>
-        <p className="text-muted-foreground">
+        </div>
+        <p className="text-muted-foreground text-lg">
           {user.is_admin
-            ? "Admin Dashboard - Manage certificates and users"
-            : "Manage your certificates"}
+            ? "Manage certificates and users across the system"
+            : "View and manage all certificates"}
         </p>
       </div>
+
+      <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mb-10" />
 
       {/* Stats Cards */}
       {user.is_admin ? (
         // Admin Dashboard - 4 cards in 2x2 grid
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Active Certificates
-              </CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-10">
+          <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-transparent dark:from-green-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-green-700 dark:text-green-400 uppercase tracking-wide">
+                  Active Certificates
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-1">
                     {stats?.active_certificates ?? "-"}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground font-medium">
                     Non-revoked certificates
                   </p>
                 </>
@@ -136,22 +156,26 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Authorized Users
-              </CardTitle>
-              <UserCheck className="h-4 w-4 text-blue-600" />
+          <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
+                  Authorized Users
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                  <UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                     {stats?.authorized_users ?? "-"}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground font-medium">
                     Authorized system users
                   </p>
                 </>
@@ -159,22 +183,26 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Issued by Me
-              </CardTitle>
-              <Award className="h-4 w-4 text-primary" />
+          <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">
+                  Issued by Me
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+                  <Award className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold">
+                  <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
                     {stats?.certificates_issued_by_me ?? "-"}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground font-medium">
                     Your contributions
                   </p>
                 </>
@@ -182,52 +210,55 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Recent Activity
-              </CardTitle>
-              <History className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-transparent dark:from-orange-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">
+                  Recent Activity
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
+                  <History className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : stats?.recent_activity && stats.recent_activity.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {stats.recent_activity.map((log, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between text-xs"
+                      className="flex items-center gap-2 p-2 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors"
                     >
-                      <Badge
-                        variant="outline"
-                        className={`${getActionBadgeVariant(
-                          log.action
-                        )} text-[10px] py-0`}
-                      >
-                        {log.action}
-                      </Badge>
-                      <span className="text-muted-foreground">
+                      <div className="flex items-center gap-2 flex-1">
+                        {getActionIcon(log.action)}
+                        <Badge
+                          variant="outline"
+                          className={`${getActionBadgeVariant(
+                            log.action
+                          )} text-[10px] font-semibold`}
+                        >
+                          {log.action}
+                        </Badge>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium">
                         {formatDistanceToNow(new Date(log.timestamp), {
                           addSuffix: true,
                         })}
                       </span>
                     </div>
                   ))}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2"
-                    asChild
+                  <Link
+                    href={`/users/${user.wallet_address}`}
+                    className="flex items-center justify-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors mt-3 py-2 rounded-md hover:bg-primary/5"
                   >
-                    <Link href={`/users/${user.wallet_address}`}>
-                      View All
-                      <ArrowRight className="ml-2 h-3 w-3" />
-                    </Link>
-                  </Button>
+                    View All Activity
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-medium">
                   No recent activity
                 </p>
               )}
@@ -235,24 +266,28 @@ export default function DashboardPage() {
           </Card>
         </div>
       ) : (
-        // Non-Admin Dashboard - 3 cards
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Active Certificates
-              </CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+        // Staff Dashboard - 3 cards
+        <div className="grid gap-6 md:grid-cols-3 mb-10">
+          <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-transparent dark:from-green-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-green-700 dark:text-green-400 uppercase tracking-wide">
+                  Active Certificates
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-1">
                     {stats?.active_certificates ?? "-"}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground font-medium">
                     System-wide valid certificates
                   </p>
                 </>
@@ -260,22 +295,26 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Issued by Me
-              </CardTitle>
-              <Award className="h-4 w-4 text-primary" />
+          <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">
+                  Issued by Me
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+                  <Award className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold">
+                  <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
                     {stats?.certificates_issued_by_me ?? "-"}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground font-medium">
                     Your contributions
                   </p>
                 </>
@@ -283,52 +322,55 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Recent Activity
-              </CardTitle>
-              <History className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-transparent dark:from-orange-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">
+                  Recent Activity
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
+                  <History className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <LoadingSpinner size="sm" />
               ) : stats?.recent_activity && stats.recent_activity.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {stats.recent_activity.map((log, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between text-xs"
+                      className="flex items-center gap-2 p-2 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors"
                     >
-                      <Badge
-                        variant="outline"
-                        className={`${getActionBadgeVariant(
-                          log.action
-                        )} text-[10px] py-0`}
-                      >
-                        {log.action}
-                      </Badge>
-                      <span className="text-muted-foreground">
+                      <div className="flex items-center gap-2 flex-1">
+                        {getActionIcon(log.action)}
+                        <Badge
+                          variant="outline"
+                          className={`${getActionBadgeVariant(
+                            log.action
+                          )} text-[10px] font-semibold`}
+                        >
+                          {log.action}
+                        </Badge>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium">
                         {formatDistanceToNow(new Date(log.timestamp), {
                           addSuffix: true,
                         })}
                       </span>
                     </div>
                   ))}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2"
-                    asChild
+                  <Link
+                    href={`/users/${user.wallet_address}`}
+                    className="flex items-center justify-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors mt-3 py-2 rounded-md hover:bg-primary/5"
                   >
-                    <Link href={`/users/${user.wallet_address}`}>
-                      View All
-                      <ArrowRight className="ml-2 h-3 w-3" />
-                    </Link>
-                  </Button>
+                    View All Activity
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-medium">
                   No recent activity
                 </p>
               )}
@@ -337,124 +379,143 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Section Divider */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border" />
+        <h2 className="text-xl font-bold text-foreground uppercase tracking-wide">
+          Quick Actions
+        </h2>
+        <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border" />
+      </div>
+
       {/* Quick Actions */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Certificate Actions */}
-        <Card className="border-2 hover:border-primary transition-colors">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Certificate Management
-            </CardTitle>
-            <CardDescription>
+        <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg group">
+          <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent pb-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+                <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <CardTitle className="text-lg font-bold">
+                Certificate Management
+              </CardTitle>
+            </div>
+            <CardDescription className="font-medium">
               Issue, verify, and manage certificates
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button asChild variant="outline" className="w-full justify-start">
+          <CardContent className="space-y-2 pt-4">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start h-11 font-semibold hover:bg-green-500/5 hover:text-green-600 hover:border-green-500/50 transition-all"
+            >
               <Link href="/certificates">
                 <FileText className="mr-2 h-4 w-4" />
                 View All Certificates
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start h-11 font-semibold hover:bg-green-500/5 hover:text-green-600 hover:border-green-500/50 transition-all"
+            >
+              <Link href="/certificates/issue">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {user.is_admin ? "Issue New Certificate" : "Issue Certificate"}
               </Link>
             </Button>
             {user.is_admin && (
               <Button
                 asChild
                 variant="outline"
-                className="w-full justify-start"
+                className="w-full justify-start h-11 font-semibold hover:bg-green-500/5 hover:text-green-600 hover:border-green-500/50 transition-all"
               >
-                <Link href="/certificates/issue">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Issue New Certificate
+                <Link href="/verify">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Verify Certificate
                 </Link>
               </Button>
             )}
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link href="/verify">
-                <Shield className="mr-2 h-4 w-4" />
-                Verify Certificate
-              </Link>
-            </Button>
           </CardContent>
         </Card>
 
-        {/* User Management (Admin Only) */}
-        {user.is_admin && (
-          <Card className="border-2 hover:border-primary transition-colors">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+        {/* User Management */}
+        <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg group">
+          <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent pb-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <CardTitle className="text-lg font-bold">
                 User Management
               </CardTitle>
-              <CardDescription>
-                Manage authorized users and permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                asChild
-                variant="outline"
-                className="w-full justify-start"
-              >
-                <Link href="/users">
-                  <Users className="mr-2 h-4 w-4" />
-                  View All Users
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full justify-start"
-              >
-                <Link href="/users/register">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Register New User
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full justify-start"
-              >
-                <Link href="/audit-logs/system">
-                  <History className="mr-2 h-4 w-4" />
-                  System Audit Logs
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Student View */}
-        {!user.is_admin && (
-          <Card className="border-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Your Information
-              </CardTitle>
-              <CardDescription>
-                View your profile and certificates
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="text-sm space-y-2">
-                <div>
-                  <span className="text-muted-foreground">Username:</span>
-                  <p className="font-medium">{user.username}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <p className="font-medium">{user.email}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Wallet:</span>
-                  <p className="font-mono text-xs">{user.wallet_address}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+            <CardDescription className="font-medium">
+              {user.is_admin
+                ? "Manage authorized users and permissions"
+                : "Manage your profile and account"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-4">
+            {user.is_admin ? (
+              <>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-start h-11 font-semibold hover:bg-blue-500/5 hover:text-blue-600 hover:border-blue-500/50 transition-all"
+                >
+                  <Link href="/users">
+                    <Users className="mr-2 h-4 w-4" />
+                    View All Users
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-start h-11 font-semibold hover:bg-blue-500/5 hover:text-blue-600 hover:border-blue-500/50 transition-all"
+                >
+                  <Link href="/users/register">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Register New User
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-start h-11 font-semibold hover:bg-blue-500/5 hover:text-blue-600 hover:border-blue-500/50 transition-all"
+                >
+                  <Link href="/audit-logs/system">
+                    <History className="mr-2 h-4 w-4" />
+                    System Audit Logs
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-start h-11 font-semibold hover:bg-blue-500/5 hover:text-blue-600 hover:border-blue-500/50 transition-all"
+                >
+                  <Link href={`/users/${user.wallet_address}`}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    My Profile
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="w-full justify-start h-11 font-semibold hover:bg-blue-500/5 hover:text-blue-600 hover:border-blue-500/50 transition-all"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

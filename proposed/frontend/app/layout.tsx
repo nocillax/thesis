@@ -28,10 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>CertChain - Blockchain Certificate Management</title>
+        <title>NXCertify - University Certificate Verification System</title>
         <meta
           name="description"
-          content="Secure blockchain-based certificate issuance and verification system"
+          content="Secure blockchain-based university certificate issuance and verification system"
         />
       </head>
       <body className="font-sans antialiased">
@@ -44,7 +44,9 @@ export default function RootLayout({
           <QueryClientProvider client={queryClient}>
             <div className="flex min-h-screen flex-col">
               <Header />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1 min-h-[calc(100vh-200px)]">
+                {children}
+              </main>
               <Footer />
             </div>
             <Toaster
@@ -54,6 +56,7 @@ export default function RootLayout({
                 style: {
                   background: "hsl(var(--background))",
                   border: "1px solid hsl(var(--border))",
+                  zIndex: 99999,
                 },
               }}
             />

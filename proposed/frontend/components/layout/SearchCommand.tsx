@@ -132,7 +132,7 @@ export function SearchCommand() {
   return (
     <Command
       ref={containerRef}
-      className="border overflow-visible relative "
+      className="border overflow-visible relative w-[400px]"
       shouldFilter={false}
     >
       <div className="relative">
@@ -141,7 +141,7 @@ export function SearchCommand() {
           placeholder="Search Student ID, Certificate Hash, or Wallet..."
           value={query}
           onValueChange={handleValueChange}
-          className="pr-8"
+          className="pr-8 text-sm placeholder:text-xs"
         />
         {query && (
           <button

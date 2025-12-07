@@ -42,6 +42,7 @@ export function Header() {
         { href: "/dashboard", label: "Dashboard" },
         { href: "/certificates", label: "Certificates" },
         ...(user?.is_admin ? [{ href: "/users", label: "Users" }] : []),
+        { href: "/verify", label: "Verify" },
       ]
     : [
         { href: "/", label: "Home" },
@@ -49,40 +50,50 @@ export function Header() {
       ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary" />
-          <span className="text-xl font-bold">CertChain</span>
+          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
+            {/* Placeholder for logo - replace logo-light.jpg and logo-dark.jpg in /public */}
+            <span className="text-primary-foreground font-bold text-lg">
+              NX
+            </span>
+          </div>
+          <span className="text-xl font-bold text-secondary-foreground">
+            NXCertify
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-2">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`relative px-4 py-2 text-sm font-semibold transition-all ${
                 pathname === link.href
-                  ? "text-primary"
-                  : "text-muted-foreground"
+                  ? "text-secondary-foreground bg-secondary"
+                  : "text-muted-foreground font-medium hover:text-foreground hover:bg-accent"
               }`}
             >
               {link.label}
+              {pathname === link.href && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+              )}
             </Link>
           ))}
         </nav>
 
-        {/* Search Bar */}
-        {isAuthenticated && (
-          <div className="hidden md:flex items-center flex-1 max-w-sm mx-6">
-            <SearchCommand />
-          </div>
-        )}
+        {/* Right Section: Search | Theme Toggle | User Menu */}
+        <div className="flex items-center gap-3">
+          {/* Search Bar - moved to right side */}
+          {isAuthenticated && (
+            <div className="hidden md:flex items-center">
+              <SearchCommand />
+            </div>
+          )}
 
-        {/* User Menu or Login Button */}
-        <div className="flex items-center gap-2">
           <ThemeToggle />
           {isAuthenticated && user ? (
             <DropdownMenu>
