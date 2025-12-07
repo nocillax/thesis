@@ -27,6 +27,10 @@ export default function CertificateAuditLogsPage({
   } = useQuery({
     queryKey: ["audit-logs", "certificate", hash],
     queryFn: () => auditLogsAPI.getByCertificate(hash),
+    refetchInterval: 5000, // Poll every 5 seconds for audit logs
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   if (isLoading) {

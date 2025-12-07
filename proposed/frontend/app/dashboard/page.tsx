@@ -72,6 +72,10 @@ export default function DashboardPage() {
     queryKey: ["stats"],
     queryFn: statsAPI.get,
     enabled: isAuthenticated,
+    refetchInterval: 5000, // Poll every 5 seconds for dashboard stats
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   useEffect(() => {

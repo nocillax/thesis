@@ -8,23 +8,33 @@ import { usersAPI } from "@/lib/api/users";
 import { toast } from "sonner";
 
 // Infinite query for users list with auto-refetch (polling)
-export function useUsers(status?: "authorized" | "revoked" | "admin") {
+export function useUsers(
+  status?: "authorized" | "revoked" | "admin",
+  shouldPoll: boolean = true
+) {
   return useInfiniteQuery({
     queryKey: ["users", status],
     queryFn: ({ pageParam = 1 }) => usersAPI.getAll(pageParam, 20, status),
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_more ? lastPage.meta.current_page + 1 : undefined,
     initialPageParam: 1,
-    refetchInterval: 15000, // Poll every 15 seconds for blockchain updates
+    refetchInterval: shouldPoll ? 15000 : false, // Poll every 15 seconds when enabled
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 
 // Single user query
-export function useUser(address: string) {
+export function useUser(address: string, shouldPoll: boolean = true) {
   return useQuery({
     queryKey: ["user", address],
     queryFn: () => usersAPI.getByAddress(address),
     enabled: !!address,
+    refetchInterval: shouldPoll ? 5000 : false, // Poll every 5 seconds for individual user
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 

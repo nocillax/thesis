@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useAuthStore } from "@/stores/authStore";
 import {
   useReactTable,
   getCoreRowModel,
@@ -51,6 +52,7 @@ interface CertificateTableProps {
 }
 
 export function CertificateTable({ data }: CertificateTableProps) {
+  const { user } = useAuthStore();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -264,7 +266,7 @@ export function CertificateTable({ data }: CertificateTableProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
       {/* Always Visible Toolbar */}
       <div className="flex items-center gap-2 p-4 border rounded-lg bg-accent/50">
         <TooltipProvider>
@@ -274,14 +276,22 @@ export function CertificateTable({ data }: CertificateTableProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleBulkRevoke}
-                disabled={selectedCount === 0 || isRevoking}
+                disabled={
+                  selectedCount === 0 ||
+                  isAnyOperationPending ||
+                  (!user?.is_admin && selectedCount > 1)
+                }
               >
                 <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
                   <Ban className="h-3 w-3 text-red-700 dark:text-red-300" />
                 </div>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Revoke Certificate</TooltipContent>
+            <TooltipContent>
+              {!user?.is_admin && selectedCount > 1
+                ? "Bulk actions require admin privileges"
+                : "Revoke Certificate(s)"}
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -290,7 +300,11 @@ export function CertificateTable({ data }: CertificateTableProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleBulkReactivate}
-                disabled={selectedCount !== 1 || isReactivating}
+                disabled={
+                  selectedCount === 0 ||
+                  isAnyOperationPending ||
+                  (!user?.is_admin && selectedCount > 1)
+                }
               >
                 <div className="rounded-full bg-green-100 dark:bg-green-900 p-1">
                   <CheckCircle className="h-3 w-3 text-green-700 dark:text-green-300" />
@@ -298,9 +312,9 @@ export function CertificateTable({ data }: CertificateTableProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {selectedCount === 1
-                ? "Reactivate Certificate"
-                : "Select only 1 certificate to reactivate"}
+              {!user?.is_admin && selectedCount > 1
+                ? "Bulk actions require admin privileges"
+                : "Reactivate Certificate(s)"}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -312,12 +326,12 @@ export function CertificateTable({ data }: CertificateTableProps) {
         )}
       </div>
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay - Table scope only */}
       {isAnyOperationPending && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Processing...</p>
+            <p className="text-sm font-medium">Processing...</p>
           </div>
         </div>
       )}

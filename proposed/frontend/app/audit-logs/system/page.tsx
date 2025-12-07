@@ -33,6 +33,10 @@ export default function SystemAuditLogsPage() {
     queryKey: ["audit-logs", "system", page],
     queryFn: () => auditLogsAPI.getAll(page, ITEMS_PER_PAGE),
     enabled: isAuthenticated && user?.is_admin,
+    refetchInterval: 5000, // Poll every 5 seconds for audit logs
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const isPaginated = data && typeof data === "object" && "meta" in data;

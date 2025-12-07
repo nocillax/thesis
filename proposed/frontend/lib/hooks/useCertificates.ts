@@ -8,7 +8,10 @@ import { certificatesAPI } from "@/lib/api/certificates";
 import { toast } from "sonner";
 
 // Infinite query for certificates list
-export function useCertificates(status?: "active" | "revoked") {
+export function useCertificates(
+  status?: "active" | "revoked",
+  shouldPoll: boolean = true
+) {
   return useInfiniteQuery({
     queryKey: ["certificates", status],
     queryFn: ({ pageParam = 1 }) =>
@@ -16,25 +19,39 @@ export function useCertificates(status?: "active" | "revoked") {
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_more ? lastPage.meta.current_page + 1 : undefined,
     initialPageParam: 1,
-    refetchInterval: 15000, // Poll every 15 seconds
+    refetchInterval: shouldPoll ? 15000 : false, // Poll every 15 seconds when enabled
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 
 // Single certificate query
-export function useCertificate(hash: string) {
+export function useCertificate(hash: string, shouldPoll: boolean = true) {
   return useQuery({
     queryKey: ["certificate", hash],
     queryFn: () => certificatesAPI.verify(hash),
     enabled: !!hash,
+    refetchInterval: shouldPoll ? 5000 : false, // Poll every 5 seconds for individual cert
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 
 // Student certificates query
-export function useStudentCertificates(studentId: string) {
+export function useStudentCertificates(
+  studentId: string,
+  shouldPoll: boolean = true
+) {
   return useQuery({
     queryKey: ["certificates", "student", studentId],
     queryFn: () => certificatesAPI.getAllVersions(studentId),
     enabled: !!studentId,
+    refetchInterval: shouldPoll ? 5000 : false, // Poll every 5 seconds for student certs
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 

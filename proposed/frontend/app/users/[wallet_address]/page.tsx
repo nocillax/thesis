@@ -42,6 +42,10 @@ export default function UserProfilePage({
   } = useQuery({
     queryKey: ["user", wallet_address],
     queryFn: () => usersAPI.getByAddress(wallet_address),
+    refetchInterval: 5000, // Poll every 5 seconds for user details
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch audit logs
@@ -53,6 +57,10 @@ export default function UserProfilePage({
   } = useQuery({
     queryKey: ["audit-logs", "user", wallet_address, page],
     queryFn: () => auditLogsAPI.getByUser(wallet_address, page, ITEMS_PER_PAGE),
+    refetchInterval: 5000, // Poll every 5 seconds for audit logs
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const isPaginated =

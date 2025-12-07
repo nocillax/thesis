@@ -12,6 +12,7 @@ export const apiClient = axios.create({
 // Request interceptor - Add JWT token to all requests
 apiClient.interceptors.request.use(
   (config) => {
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("access_token");
       if (token) {
