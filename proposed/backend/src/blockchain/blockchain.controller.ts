@@ -19,7 +19,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
 import { AuthorizedGuard } from '../auth/authorized.guard';
 import { BlockchainService } from './blockchain.service';
-import { PdfService } from './pdf.service';
+import { PdfService } from './services/pdf.service';
 import {
   IssueCertificateDto,
   VerifyCertificateDto,
