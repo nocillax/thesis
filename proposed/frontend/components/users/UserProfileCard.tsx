@@ -65,7 +65,9 @@ export function UserProfileCard({
 
             {/* Status */}
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Status</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Status
+              </p>
               <StatusBadge isActive={isAuthorized} type="user" />
             </div>
 
@@ -74,9 +76,7 @@ export function UserProfileCard({
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Registered On
               </p>
-              <p className="font-semibold">
-                {formatDate(registrationDate)}
-              </p>
+              <p className="font-semibold">{formatDate(registrationDate)}</p>
             </div>
 
             {/* Wallet Address */}
@@ -87,7 +87,9 @@ export function UserProfileCard({
               <div className="flex items-center gap-2">
                 <code className="text-xs bg-accent px-3 py-1.5 rounded border font-mono break-all md:break-normal">
                   <span className="hidden md:inline">{walletAddress}</span>
-                  <span className="md:hidden">{truncateAddress(walletAddress)}</span>
+                  <span className="md:hidden">
+                    {truncateAddress(walletAddress)}
+                  </span>
                 </code>
                 <CopyButton text={walletAddress} label="Copy Address" />
               </div>

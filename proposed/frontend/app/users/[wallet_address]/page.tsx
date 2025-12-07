@@ -115,7 +115,9 @@ export default function UserProfilePage({
             <UserIcon className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-1">User Profile</h1>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">
+              User Profile
+            </h1>
             <p className="text-muted-foreground font-medium">
               View user information and their action history
             </p>
@@ -149,7 +151,8 @@ export default function UserProfilePage({
             <CardTitle className="text-2xl font-bold">Action History</CardTitle>
             {meta && (
               <div className="text-sm text-muted-foreground font-medium">
-                Page {meta.current_page} of {meta.total_pages} ({meta.total_count} total)
+                Page {meta.current_page} of {meta.total_pages} (
+                {meta.total_count} total)
               </div>
             )}
           </div>

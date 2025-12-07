@@ -78,7 +78,9 @@ export default function SystemAuditLogsPage() {
             <History className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-1">System Audit Logs</h1>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">
+              System Audit Logs
+            </h1>
             <p className="text-muted-foreground font-medium">
               Complete system-wide activity log for all certificates
             </p>
@@ -99,10 +101,13 @@ export default function SystemAuditLogsPage() {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold">All Certificate Actions</CardTitle>
+            <CardTitle className="text-2xl font-bold">
+              All Certificate Actions
+            </CardTitle>
             {meta && (
               <div className="text-sm text-muted-foreground font-medium">
-                Page {meta.current_page} of {meta.total_pages} ({meta.total_count} total)
+                Page {meta.current_page} of {meta.total_pages} (
+                {meta.total_count} total)
               </div>
             )}
           </div>

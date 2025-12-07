@@ -64,7 +64,9 @@ export default function CertificateAuditLogsPage({
             <History className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-1">Certificate Audit Logs</h1>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">
+              Certificate Audit Logs
+            </h1>
             <p className="text-muted-foreground font-medium">
               Complete history of actions for this certificate
             </p>
