@@ -14,7 +14,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-nocillax}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME:-nocillax} -d ${DB_NAME:-cert_control_db}",
+        ]
       interval: 5s
       timeout: 3s
       retries: 5
