@@ -135,8 +135,7 @@ export default function Home() {
                     Verify a Certificate
                   </h2>
                   <p className="text-muted-foreground text-lg">
-                    Enter a student ID or certificate hash to instantly verify
-                    authenticity
+                    Enter the certificate hash to instantly verify authenticity
                   </p>
                 </div>
 
@@ -155,7 +154,7 @@ export default function Home() {
                 >
                   <Input
                     name="query"
-                    placeholder="Enter Student ID (e.g., 22-46734-1) or Certificate Hash..."
+                    placeholder="Enter The Certificate Hash..."
                     className="flex-1 h-12 text-base"
                     required
                   />
