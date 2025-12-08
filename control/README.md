@@ -12,7 +12,9 @@ Centralized certificate issuance and verification using PostgreSQL with database
 
 ---
 
-## Quick Setup (One Command)
+## Quick Setup
+
+### Step 1: Setup Database
 
 ```bash
 cd control
@@ -21,38 +23,70 @@ cd control
 
 This script will:
 
-1. ✅ Start PostgreSQL in Docker container
-2. ✅ Create database tables automatically
-3. ✅ Seed admin user (username: `admin`, password: `admin123`)
+1. ✅ Start PostgreSQL container in Docker
+2. ✅ Create database `cert_control_db`
+3. ✅ Display database credentials
 
 **Expected Output:**
 
 ```
-✨ Setup Complete!
+✨ Database Setup Complete!
 
-📝 Default Admin Credentials:
-   Username: admin
-   Password: admin123
+📊 Database Configuration:
+   Host: localhost
+   Port: 5432
+   Database: cert_control_db
+   Username: nocillax
+   Password: 2272
 
 🚀 Next Steps:
-   cd backend
-   npm run start:dev
-
-🔗 API will be available at: http://localhost:8000
+   1. cd backend
+   2. npm install
+   3. npm run start:dev
 ```
 
----
+### Step 2: Verify Configuration
 
-## Starting the Backend
+Check that `backend/.env` has the correct database credentials:
 
-After setup, start the backend server:
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=nocillax
+DB_PASSWORD=2272
+DB_NAME=cert_control_db
+
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+PORT=8000
+```
+
+### Step 3: Start Backend
 
 ```bash
 cd backend
+npm install
 npm run start:dev
 ```
 
+On first start, the backend will:
+
+- ✅ Create all database tables automatically (TypeORM sync)
+- ✅ Seed admin user: `admin` / `admin123`
+
+**Expected Output:**
+
+```
+✅ Initial Admin seeded: admin / admin123
+Control System Backend running on http://localhost:8000
+```
+
 **API Base URL:** `http://localhost:8000`
+
+**Default Admin:**
+
+- Username: `admin`
+- Password: `admin123`
 
 ---
 
