@@ -19,4 +19,7 @@ export class User {
 
   @Column({ name: 'is_admin', default: false })
   is_admin: boolean;
+
+  @Column({ name: 'is_authorized', default: true })
+  is_authorized: boolean;
 }

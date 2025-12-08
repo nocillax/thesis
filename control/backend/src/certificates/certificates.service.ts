@@ -18,6 +18,16 @@ export class CertificatesService {
   ) {}
 
   async create(data: Partial<Certificate>, userId: string) {
+    // Check if certificate already exists for this student_id
+    const existing = await this.certRepo.findOne({
+      where: { student_id: data.student_id },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'Certificate already exists for this student ID',
+      );
+    }
+
     const certData = { ...data, issuer_id: userId };
     const cert = this.certRepo.create(certData);
     const savedCert = await this.certRepo.save(cert);
@@ -27,7 +37,7 @@ export class CertificatesService {
 
     return {
       certificate_id: savedCert.id,
-      certificate_number: savedCert.certificate_number,
+      student_id: savedCert.student_id,
       issuance_date: savedCert.issuance_date,
     };
   }
@@ -75,6 +85,18 @@ export class CertificatesService {
     });
   }
 
+  async verifyByStudentId(studentId: string) {
+    const cert = await this.certRepo.findOne({
+      where: { student_id: studentId },
+    });
+    if (!cert || cert.is_revoked) {
+      throw new NotFoundException(
+        'No active certificate available for this student ID',
+      );
+    }
+    return cert;
+  }
+
   async update(id: string, data: Partial<Certificate>, userId: string) {
     const cert = await this.findOne(id);
     if (cert.is_revoked) {
@@ -117,7 +139,6 @@ export class CertificatesService {
   private calculateChanges(cert: Certificate, data: Partial<Certificate>) {
     const changes: any = {};
     const fields = [
-      'certificate_number',
       'student_id',
       'student_name',
       'degree_program',

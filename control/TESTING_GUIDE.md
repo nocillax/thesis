@@ -102,21 +102,50 @@ Authorization: Bearer YOUR_TOKEN
     "username": "admin",
     "email": "admin@university.edu",
     "full_name": "System Administrator",
-    "is_admin": true
+    "is_admin": true,
+    "is_authorized": true
   },
   {
     "id": "uuid",
     "username": "alice_issuer",
     "email": "alice@bracu.edu.bd",
     "full_name": "Alice Johnson",
-    "is_admin": false
+    "is_admin": false,
+    "is_authorized": true
   }
 ]
 ```
 
 ---
 
-### 3. Create User
+### 3. Get User by ID
+
+**Endpoint:** `GET /api/users/:id`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "username": "alice_issuer",
+  "email": "alice@bracu.edu.bd",
+  "full_name": "Alice Johnson",
+  "is_admin": false,
+  "is_authorized": true
+}
+```
+
+---
+
+### 4. Create User
 
 **Endpoint:** `POST /api/users`
 
@@ -148,13 +177,61 @@ Authorization: Bearer YOUR_TOKEN
   "username": "alice_issuer",
   "email": "alice@bracu.edu.bd",
   "full_name": "Alice Johnson",
-  "is_admin": false
+  "is_admin": false,
+  "is_authorized": true
 }
 ```
 
 ---
 
-### 4. Get All Certificates
+### 5. Revoke User
+
+**Endpoint:** `PATCH /api/users/:id/revoke`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "User revoked successfully"
+}
+```
+
+---
+
+### 6. Reactivate User
+
+**Endpoint:** `PATCH /api/users/:id/reactivate`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+8
+
+```json
+{
+  "success": true,
+  "message": "User reactivated successfully"
+}
+```
+
+---
+
+### 7. Get All Certificates
 
 **Endpoint:** `GET /api/certificates`
 
@@ -172,7 +249,6 @@ Authorization: Bearer YOUR_TOKEN
 [
   {
     "id": "uuid",
-    "certificate_number": "CERT-2025-001",
     "student_id": "STU-001",
     "student_name": "John Doe",
     "degree_program": "Computer Science",
@@ -207,7 +283,6 @@ Authorization: Bearer YOUR_TOKEN
 
 ```json
 {
-  "certificate_number": "BRAC-CSE-2024-001",
   "student_id": "20101001",
   "student_name": "Bob Smith",
   "degree_program": "BSc in Computer Science",
@@ -221,25 +296,26 @@ Authorization: Bearer YOUR_TOKEN
 ```json
 {
   "certificate_id": "uuid",
-  "certificate_number": "BRAC-CSE-2024-001",
+  "student_id": "20101001",
   "issuance_date": "2024-11-27T10:30:00.000Z"
 }
 ```
 
 ---
 
-### 6. Get Certificate
+### 9. Verify Certificate by Student ID
 
-**Endpoint:** `GET /api/certificates/:id`
+**Endpoint:** `GET /api/certificates/verify/:student_id`
 
 **Auth:** None (Public)
+
+**Note:** Returns 404 if certificate is revoked or not found
 
 **Response:**
 
 ```json
 {
   "id": "uuid",
-  "certificate_number": "BRAC-CSE-2024-001",
   "student_id": "20101001",
   "student_name": "Bob Smith",
   "degree_program": "BSc in Computer Science",
@@ -253,7 +329,39 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 7. Update Certificate
+### 10. Get Certificate by ID
+
+**Endpoint:** `GET /api/certificates/:id`
+
+**Auth:** JWT Required (Internal Use)
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Note:** Shows certificate regardless of revocation status
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "student_id": "20101001",
+  "student_name": "Bob Smith",
+  "degree_program": "BSc in Computer Science",
+  "cgpa": 3.85,
+  "issuing_authority": "BRAC University",
+  "issuer_id": "uuid",
+  "issuance_date": "2024-11-27T10:30:00.000Z",
+  "is_revoked": false
+}
+```
+
+---
+
+### 11. Update Certificate
 
 **Endpoint:** `PATCH /api/certificates/:id`
 
@@ -285,7 +393,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 8. Revoke Certificate
+### 12. Revoke Certificate
 
 **Endpoint:** `PATCH /api/certificates/:id/revoke`
 
@@ -308,7 +416,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 9. Reactivate Certificate
+### 13. Reactivate Certificate
 
 **Endpoint:** `PATCH /api/certificates/:id/reactivate`
 
@@ -331,9 +439,48 @@ Authorization: Bearer YOUR_TOKEN
 
 ---
 
-### 10. Get Audit Logs
+### 14. Get Audit Logs
 
-**Endpoint:** `GET /api/certificates/audit-logs?certificate_id=:id`
+**Endpoint:** `GET /api/certificates/audit-logs`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Query Parameters:**
+
+- `certificate_id` (optional): Filter logs for specific certificate
+
+**Response:**
+
+```json
+[
+  {
+    "action": "INSERT",
+    "certificate_id": "uuid",
+    "details": { "student_id": "20101001", "student_name": "Bob Smith" },
+    "performed_by": "uuid",
+    "timestamp": "2024-11-27T10:30:00.000Z"
+  },
+  {
+    "action": "REVOKE",
+    "certificate_id": "uuid",
+    "details": { "is_revoked": { "before": false, "after": true } },
+    "performed_by": "uuid",
+    "timestamp": "2024-11-27T11:00:00.000Z"
+  }
+]
+```
+
+---
+
+### 15. Get System-Wide Audit Logs
+
+**Endpoint:** `GET /api/audit-logs`
 
 **Auth:** JWT Required
 
@@ -350,7 +497,42 @@ Authorization: Bearer YOUR_TOKEN
   {
     "action": "INSERT",
     "certificate_id": "uuid",
-    "details": { "certificate_number": "BRAC-CSE-2024-001" },
+    "details": { "student_id": "20101001", "student_name": "Bob Smith" },
+    "performed_by": "uuid",
+    "timestamp": "2024-11-27T10:30:00.000Z"
+  },
+  {
+    "action": "REVOKE",
+    "certificate_id": "uuid",
+    "details": { "is_revoked": { "before": false, "after": true } },
+    "performed_by": "uuid",
+    "timestamp": "2024-11-27T11:00:00.000Z"
+  }
+]
+```
+
+---
+
+### 16. Get Certificate-Specific Audit Logs
+
+**Endpoint:** `GET /api/audit-logs/certificate/:id`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "action": "INSERT",
+    "certificate_id": "uuid",
+    "details": { "student_id": "20101001", "student_name": "Bob Smith" },
     "performed_by": "uuid",
     "timestamp": "2024-11-27T10:30:00.000Z"
   },
@@ -378,7 +560,7 @@ psql -U postgres -d control_certificates
 
 ```sql
 SELECT
-  c.certificate_number,
+  c.student_id,
   c.student_name,
   u.username as issued_by,
   c.is_revoked
@@ -413,3 +595,4 @@ ORDER BY a.timestamp DESC;
 | **Issuance Time** | ~10-50ms (database insert) | ~1-2 seconds (blockchain)      |
 | **Scalability**   | High (database scales)     | Lower (blockchain limits)      |
 | **Complexity**    | Simple (standard REST API) | Complex (blockchain + backend) |
+| **Uniqueness**    | One cert per student_id    | One cert per student_id        |

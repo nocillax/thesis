@@ -21,9 +21,52 @@ export class UsersService implements OnModuleInit {
 
   async findAll(): Promise<User[]> {
     const users = await this.usersRepository.find({
-      select: ['id', 'username', 'email', 'full_name', 'is_admin'],
+      select: [
+        'id',
+        'username',
+        'email',
+        'full_name',
+        'is_admin',
+        'is_authorized',
+      ],
     });
     return users;
+  }
+
+  async findById(id: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: [
+        'id',
+        'username',
+        'email',
+        'full_name',
+        'is_admin',
+        'is_authorized',
+      ],
+    });
+    if (!user) throw new ConflictException('User not found');
+    return user;
+  }
+
+  async revokeUser(id: string) {
+    const user = await this.findById(id);
+    if (!user.is_authorized) {
+      throw new ConflictException('User is already revoked');
+    }
+    user.is_authorized = false;
+    await this.usersRepository.save(user);
+    return { success: true, message: 'User revoked successfully' };
+  }
+
+  async reactivateUser(id: string) {
+    const user = await this.findById(id);
+    if (user.is_authorized) {
+      throw new ConflictException('User is already active');
+    }
+    user.is_authorized = true;
+    await this.usersRepository.save(user);
+    return { success: true, message: 'User reactivated successfully' };
   }
 
   async create(

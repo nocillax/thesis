@@ -14,7 +14,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
 
 class CreateCertificateDto {
-  @IsString() @IsNotEmpty() certificate_number: string;
   @IsString() @IsNotEmpty() student_id: string;
   @IsString() @IsNotEmpty() student_name: string;
   @IsString() @IsNotEmpty() degree_program: string;
@@ -38,12 +37,12 @@ export class CertificatesController {
     return this.certificatesService.create(createDto, req.user.userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
-  @Get('audit-logs')
-  getAuditLogs(@Query('certificate_id') certificateId?: string) {
-    return this.certificatesService.getAuditLogs(certificateId);
+  @Get('verify/:student_id')
+  verifyCertificate(@Param('student_id') studentId: string) {
+    return this.certificatesService.verifyByStudentId(studentId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.certificatesService.findOne(id);

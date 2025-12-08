@@ -11,15 +11,12 @@ import { User } from '../../users/user.entity';
 
 @Entity('certificates')
 @Index(['student_name', 'degree_program'])
-@Index(['certificate_number'], { unique: true })
+@Index(['student_id'], { unique: true })
 export class Certificate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'certificate_number', unique: true })
-  certificate_number: string;
-
-  @Column({ name: 'student_id' })
+  @Column({ name: 'student_id', unique: true })
   student_id: string;
 
   @Column({ name: 'student_name' })

@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Param,
+  Patch,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
@@ -54,5 +62,26 @@ export class UsersController {
       dto.full_name,
       dto.isAdmin,
     );
+  }
+
+  // Protected: Get user by ID
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.usersService.findById(id);
+  }
+
+  // Protected: Revoke user access
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch(':id/revoke')
+  revoke(@Param('id') id: string) {
+    return this.usersService.revokeUser(id);
+  }
+
+  // Protected: Reactivate user access
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch(':id/reactivate')
+  reactivate(@Param('id') id: string) {
+    return this.usersService.reactivateUser(id);
   }
 }
