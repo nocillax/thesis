@@ -6,115 +6,157 @@ Centralized certificate issuance and verification using PostgreSQL with database
 
 ## Prerequisites
 
-- Node.js >= 18
-- PostgreSQL >= 14
-- npm or yarn
+- **Docker** (for PostgreSQL container)
+- **Node.js** >= 18
+- **npm** or yarn
 
 ---
 
-## Setup Instructions
-
-### 1. Clone Repository
+## Quick Setup (One Command)
 
 ```bash
-git clone https://github.com/yourusername/thesis.git
-cd thesis/control
+cd control
+./setup-db.sh
 ```
 
-### 2. Setup Backend
+This script will:
 
-```bash
-cd backend
-npm install
-
-# Create database
-createdb control_certificates
-
-# Create .env file
-cp .env.example .env
-# Edit .env with:
-# - Database credentials
-# - JWT secret
-# - Server port (3000)
-```
-
-### 3. Start Backend
-
-```bash
-npm run start:dev
-```
+1. ✅ Start PostgreSQL in Docker container
+2. ✅ Create database tables automatically
+3. ✅ Seed admin user (username: `admin`, password: `admin123`)
 
 **Expected Output:**
 
 ```
-✅ Initial Admin seeded: admin / admin123
-Listening on port 3000
+✨ Setup Complete!
+
+📝 Default Admin Credentials:
+   Username: admin
+   Password: admin123
+
+🚀 Next Steps:
+   cd backend
+   npm run start:dev
+
+🔗 API will be available at: http://localhost:8000
 ```
 
 ---
 
-## What Gets Auto-Generated (Not in Git)
+## Starting the Backend
 
-- `node_modules/` - NPM dependencies
-- `dist/` - Build outputs
+After setup, start the backend server:
 
-**Only source code, configs, and .env.example are in git.**
+```bash
+cd backend
+npm run start:dev
+```
+
+**API Base URL:** `http://localhost:8000`
 
 ---
 
-## Testing
+## Database Management
 
-See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for complete API testing instructions.
+**Stop database (keeps data):**
+
+```bash
+./stop-db.sh
+```
+
+**Remove database (deletes all data):**
+
+```bash
+./remove-db.sh
+```
+
+**Restart database:**
+
+```bash
+./setup-db.sh
+```
+
+---
+
+## API Testing
+
+See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for complete API documentation and testing instructions.
+
+**Quick Test:**
+
+```bash
+# Login
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# Response: { "access_token": "..." }
+```
+
+---
+
+## Project Structure
+
+```
+control/
+├── docker-compose.yml      # PostgreSQL container config
+├── setup-db.sh            # One-command setup script
+├── stop-db.sh             # Stop database
+├── remove-db.sh           # Remove database
+├── TESTING_GUIDE.md       # API documentation
+└── backend/
+    ├── .env               # Your local config (not in git)
+    ├── .env.example       # Template config
+    ├── src/
+    │   ├── auth/          # Authentication & JWT
+    │   ├── users/         # User management
+    │   └── certificates/  # Certificate CRUD + audit logs
+    └── package.json
+```
 
 ---
 
 ## Key Features
 
-- **Centralized Database**: All data in PostgreSQL
+- **PostgreSQL in Docker**: No local PostgreSQL installation needed
+- **Auto-seeded Admin**: Ready to use immediately (admin/admin123)
 - **JWT Authentication**: Standard token-based auth
-- **Database Audit Logs**: Before/after values in audit_logs table
+- **Database Audit Logs**: Before/after values tracked automatically
 - **Role-Based Access**: Admin and issuer roles
-- **Fast Operations**: No blockchain overhead (~10-50ms)
+- **Fast Operations**: ~10-50ms response times
 
 ---
 
-## Troubleshooting
+## Configuration
 
-**Database connection failed:**
+If you need to change defaults, edit `backend/.env`:
 
 ```bash
-# Verify PostgreSQL running
-sudo systemctl status postgresql
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=nocillax
+DB_PASSWORD=2272
+DB_NAME=cert_control_db
 
-# Check database exists
-psql -U postgres -l | grep control_certificates
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 
-# Verify credentials in .env
-cat .env
+PORT=8000
 ```
 
-**Admin not seeded:**
+Then restart:
 
 ```bash
-# Check logs for errors
-npm run start:dev
-
-# Manually check users table
-psql -U postgres -d control_certificates
-SELECT * FROM users WHERE username = 'admin';
+./stop-db.sh
+./setup-db.sh
 ```
 
 ---
 
-## Comparison with Proposed System
+## What's Not in Git
 
-See [../proposed/](../proposed/) for blockchain-based implementation.
+- `node_modules/` - NPM dependencies
+- `dist/` - Build outputs
+- `.env` - Your local environment config
+- Docker volumes - Database data
 
-| Feature       | Control (This)             | Proposed                  |
-| ------------- | -------------------------- | ------------------------- |
-| Storage       | PostgreSQL only            | Blockchain + PostgreSQL   |
-| Immutability  | Mutable (admin can change) | Immutable after consensus |
-| Trust         | Trust server/admin         | Cryptography + consensus  |
-| Verification  | Query API (trust backend)  | Cryptographic proof       |
-| Issuance Time | ~10-50ms (database insert) | ~1-2 seconds (consensus)  |
-| Complexity    | Simple (REST API)          | Complex (blockchain)      |
+Only source code, configs, and `.env.example` are tracked in git.
