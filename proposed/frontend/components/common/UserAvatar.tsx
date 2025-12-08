@@ -42,7 +42,7 @@ export function UserAvatar({
       <AvatarFallback
         className={`${fallbackSizeClasses[size]} font-semibold bg-primary text-primary-foreground`}
       >
-        {username.substring(0, 2).toUpperCase()}
+        {username?.substring(0, 2).toUpperCase()}
       </AvatarFallback>
     </Avatar>
   );
