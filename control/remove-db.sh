@@ -1,15 +1,11 @@
 #!/bin/bash
 
-echo "⚠️  WARNING: This will delete ALL database data!"
-echo ""
-read -p "Are you sure? Type 'yes' to confirm: " -r
+read -p "⚠️  Delete all data? Type 'yes': " -r
 echo ""
 
 if [[ $REPLY == "yes" ]]; then
   docker-compose down -v
-  echo "✅ Database removed (all data deleted)"
-  echo ""
-  echo "💡 To set up again: ./setup-db.sh"
+  echo "✅ Database removed"
 else
-  echo "❌ Cancelled"
+  echo "Cancelled"
 fi
