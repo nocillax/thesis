@@ -13,10 +13,9 @@ import Image from "next/image";
 import { useTheme } from "next-themes";
 import { Cormorant_SC } from "next/font/google";
 
-// Define the font. It's often best practice to do this in your root layout.tsx
 const cormorant = Cormorant_SC({
   subsets: ["latin"],
-  weight: ["700"], // We only need bold for the logo text
+  weight: ["700"],
 });
 
 export function Footer() {
