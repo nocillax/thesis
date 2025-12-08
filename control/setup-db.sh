@@ -11,16 +11,15 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Load env vars from backend/.env if it exists
+# Load env vars from backend/.env if it exists, otherwise use defaults
 if [ -f backend/.env ]; then
     export $(grep -v '^#' backend/.env | xargs)
     echo "✅ Loaded configuration from backend/.env"
 else
-    # Use defaults
     export DB_USERNAME=nocillax
     export DB_PASSWORD=2272
     export DB_NAME=cert_control_db
-    echo "⚠️  Using default configuration (backend/.env not found)"
+    echo "⚠️  Using default configuration"
 fi
 
 # Stop existing container if running
@@ -33,79 +32,62 @@ fi
 echo "🐘 Starting PostgreSQL container..."
 docker-compose up -d
 
-# Wait for healthy status
+# Wait for PostgreSQL to be ready
 echo "⏳ Waiting for database to be ready..."
 MAX_TRIES=30
 COUNT=0
-until docker-compose exec -T postgres pg_isready -U $DB_USERNAME > /dev/null 2>&1; do
+until docker exec control-postgres pg_isready -U $DB_USERNAME -d postgres > /dev/null 2>&1; do
   COUNT=$((COUNT+1))
   if [ $COUNT -ge $MAX_TRIES ]; then
     echo "❌ Database failed to start after ${MAX_TRIES} seconds"
+    docker-compose logs
     exit 1
   fi
   sleep 1
   echo -n "."
 done
 echo ""
+echo "✅ PostgreSQL is ready!"
 
-echo "✅ Database is ready!"
+# Create database if it doesn't exist
+echo "📊 Creating database '$DB_NAME'..."
+docker exec control-postgres psql -U $DB_USERNAME -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 || \
+docker exec control-postgres psql -U $DB_USERNAME -d postgres -c "CREATE DATABASE $DB_NAME"
+
+echo "✅ Database created!"
 echo ""
-echo "📊 Database Details:"
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✨ Database Setup Complete!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📊 Database Configuration:"
 echo "   Host: localhost"
 echo "   Port: 5432"
 echo "   Database: $DB_NAME"
 echo "   Username: $DB_USERNAME"
+echo "   Password: $DB_PASSWORD"
 echo ""
-
-# Install backend dependencies and seed admin
-echo "📦 Installing backend dependencies..."
-cd backend
-npm install --silent
-
-echo "🌱 Starting backend to seed admin user..."
-echo "   (This will create tables and seed admin: admin / admin123)"
+echo "📝 Update backend/.env with these values:"
+echo "   DB_HOST=localhost"
+echo "   DB_PORT=5432"
+echo "   DB_USERNAME=$DB_USERNAME"
+echo "   DB_PASSWORD=$DB_PASSWORD"
+echo "   DB_NAME=$DB_NAME"
 echo ""
-
-# Start backend in background, wait for seeding, then stop
-npm run start:dev &
-BACKEND_PID=$!
-
-# Wait for admin seeding message or timeout
-echo "⏳ Waiting for admin user to be created..."
-TIMEOUT=30
-COUNT=0
-while [ $COUNT -lt $TIMEOUT ]; do
-    if docker-compose exec -T postgres psql -U $DB_USERNAME -d $DB_NAME -c "SELECT COUNT(*) FROM users WHERE username='admin'" 2>/dev/null | grep -q "1"; then
-        echo "✅ Admin user created successfully!"
-        break
-    fi
-    COUNT=$((COUNT+1))
-    sleep 1
-done
-
-# Kill backend process
-kill $BACKEND_PID 2>/dev/null || true
-wait $BACKEND_PID 2>/dev/null || true
-
-cd ..
-
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✨ Setup Complete!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "📝 Default Admin Credentials:"
+echo "📝 Admin Credentials (after first backend start):"
 echo "   Username: admin"
 echo "   Password: admin123"
 echo ""
 echo "🚀 Next Steps:"
-echo "   cd backend"
-echo "   npm run start:dev"
+echo "   1. cd backend"
+echo "   2. npm install"
+echo "   3. npm run start:dev"
 echo ""
-echo "🔗 API will be available at: http://localhost:8000"
+echo "   (Tables and admin user will be created on first backend start)"
 echo ""
-echo "💡 Useful Commands:"
+echo "💡 Database Management:"
 echo "   ./stop-db.sh      - Stop database (keeps data)"
 echo "   ./remove-db.sh    - Remove database (deletes all data)"
-echo "   ./setup-db.sh     - Run setup again"
 echo ""
+
