@@ -69,46 +69,43 @@ export function ExecuteRequestDialog({
             <LoadingSpinner size="lg" />
           </div>
         )}
-        <DialogHeader className="space-y-3">
-          <div className="flex items-center justify-center mb-2">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Play className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <DialogTitle className="text-center text-2xl">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-2xl font-bold">
             Execute Request
           </DialogTitle>
-          <DialogDescription className="text-center">
+          <DialogDescription className="font-medium">
             Review and execute this {request.action_type} action on the
             blockchain
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-6 pt-2">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Action</Label>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Action
+              </Label>
               <div className="flex items-center gap-2">
                 {isRevoke ? (
                   <Ban className="h-4 w-4 text-red-600" />
                 ) : (
                   <RefreshCw className="h-4 w-4 text-blue-600" />
                 )}
-                <span className="font-medium">
+                <span className="font-semibold">
                   {isRevoke ? "Revoke" : "Reactivate"}
                 </span>
               </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Request ID
               </Label>
-              <div className="font-mono font-medium">#{request.id}</div>
+              <div className="font-mono font-semibold">#{request.id}</div>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Certificate Hash
             </Label>
             <div className="flex items-center gap-2">
@@ -123,14 +120,17 @@ export function ExecuteRequestDialog({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Requested By
             </Label>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">
+              <span className="font-semibold text-sm">
                 {request.requested_by_name}
               </span>
+              <code className="text-xs bg-accent px-2 py-1 rounded border font-mono">
+                {truncateHash(request.requested_by_wallet_address)}
+              </code>
               <CopyButton
                 text={request.requested_by_wallet_address}
                 label="Copy Address"
@@ -143,29 +143,28 @@ export function ExecuteRequestDialog({
             <div className="space-y-2">
               <Label
                 htmlFor="execute-reason"
-                className="text-sm font-semibold flex items-center gap-2"
+                className="text-xs font-bold uppercase tracking-wide"
               >
-                <FileText className="h-4 w-4" />
-                Revoke Reason
-                <span className="text-xs text-muted-foreground font-normal">
-                  (You can modify if needed)
-                </span>
+                Revoke Reason *
               </Label>
+              <p className="text-xs text-muted-foreground font-medium">
+                You can modify the reason if needed
+              </p>
               <Textarea
                 id="execute-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={4}
-                placeholder="Reason for revocation..."
+                placeholder="e.g., Certificate contains fraudulent information"
                 disabled={isExecuting}
-                className="resize-none"
+                className="resize-none font-bold"
               />
             </div>
           )}
 
           {!isRevoke && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-800 leading-relaxed">
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
                 <strong className="font-semibold">Note:</strong> This will
                 reactivate the certificate and make it valid again.
               </p>
@@ -178,6 +177,8 @@ export function ExecuteRequestDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isExecuting}
+            size="lg"
+            className="font-semibold"
           >
             Cancel
           </Button>
@@ -185,16 +186,18 @@ export function ExecuteRequestDialog({
             type="button"
             onClick={handleExecute}
             disabled={isExecuting || (isRevoke && !reason.trim())}
+            size="lg"
+            className="font-semibold"
           >
             {isRevoke ? (
               <>
                 <Ban className="mr-2 h-4 w-4" />
-                Revoke
+                Revoke Certificate
               </>
             ) : (
               <>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Reactivate
+                Reactivate Certificate
               </>
             )}
           </Button>

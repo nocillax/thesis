@@ -130,9 +130,8 @@ export function UserFilters({ filters, onFiltersChange }: UserFiltersProps) {
 
       {/* Clear Filters */}
       {hasActiveFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
-          <X className="mr-2 h-4 w-4" />
-          Clear
+        <Button variant="outline" size="sm" onClick={clearFilters}>
+          <X className="h-4 w-4" />
         </Button>
       )}
     </div>

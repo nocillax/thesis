@@ -10,21 +10,11 @@ import {
   getFilteredRowModel,
   type ColumnDef,
   type SortingState,
-  type RowSelectionState,
   flexRender,
 } from "@tanstack/react-table";
-import {
-  Ban,
-  CheckCircle,
-  Eye,
-  ChevronUp,
-  ChevronDown,
-  ChevronsUpDown,
-  Loader2,
-} from "lucide-react";
+import { Eye, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { Certificate } from "@/types/certificate";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -42,10 +32,6 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { CopyButton } from "@/components/common/CopyButton";
 import { formatDate, truncateHash, formatCGPA } from "@/lib/utils/format";
-import {
-  useBulkRevokeCertificates,
-  useBulkReactivateCertificates,
-} from "@/lib/hooks/useCertificates";
 
 interface CertificateTableProps {
   data: Certificate[];
@@ -58,35 +44,8 @@ export function CertificateTable({
 }: CertificateTableProps) {
   const { user } = useAuthStore();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-
-  const { mutate: bulkRevoke, isPending: isRevoking } =
-    useBulkRevokeCertificates();
-  const { mutate: bulkReactivate, isPending: isReactivating } =
-    useBulkReactivateCertificates();
-
-  const isAnyOperationPending = isRevoking || isReactivating;
 
   const columns: ColumnDef<Certificate>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: "student_id",
       header: ({ column }) => {
@@ -95,7 +54,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1  text-primary font-semibold uppercase"
           >
             Student ID
             {isSorted === "asc" ? (
@@ -111,7 +70,7 @@ export function CertificateTable({
       cell: ({ row }) => (
         <Link
           href={`/certificates/student/${row.original.student_id}`}
-          className="text-primary hover:underline font-medium"
+          className="text-blue-700 dark:text-blue-500 hover:underline font-semibold ml-5"
         >
           {row.original.student_id}
         </Link>
@@ -125,7 +84,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 -ml-3 text-primary font-semibold uppercase"
           >
             Name
             {isSorted === "asc" ? (
@@ -139,73 +98,7 @@ export function CertificateTable({
         );
       },
     },
-    {
-      accessorKey: "degree",
-      header: ({ column }) => {
-        const isSorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
-          >
-            Degree
-            {isSorted === "asc" ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : isSorted === "desc" ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronsUpDown className="h-4 w-4" />
-            )}
-          </Button>
-        );
-      },
-    },
-    {
-      accessorKey: "program",
-      header: ({ column }) => {
-        const isSorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
-          >
-            Program
-            {isSorted === "asc" ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : isSorted === "desc" ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronsUpDown className="h-4 w-4" />
-            )}
-          </Button>
-        );
-      },
-    },
-    {
-      accessorKey: "cgpa",
-      header: ({ column }) => {
-        const isSorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
-          >
-            CGPA
-            {isSorted === "asc" ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : isSorted === "desc" ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronsUpDown className="h-4 w-4" />
-            )}
-          </Button>
-        );
-      },
-      cell: ({ row }) => formatCGPA(row.original.cgpa),
-    },
+
     {
       accessorKey: "issuance_date",
       header: ({ column }) => {
@@ -214,7 +107,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 -ml-3 text-primary font-semibold uppercase"
           >
             Issue Date
             {isSorted === "asc" ? (
@@ -237,7 +130,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 -ml-3 text-primary font-semibold uppercase"
           >
             Version
             {isSorted === "asc" ? (
@@ -251,7 +144,9 @@ export function CertificateTable({
         );
       },
       cell: ({ row }) => (
-        <span className="font-mono text-sm">v{row.original.version}</span>
+        <span className="font-mono font-bold text-sm ml-5">
+          v{row.original.version}
+        </span>
       ),
     },
     {
@@ -262,7 +157,7 @@ export function CertificateTable({
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 text-primary font-semibold uppercase"
           >
             Status
             {isSorted === "asc" ? (
@@ -279,7 +174,9 @@ export function CertificateTable({
     },
     {
       id: "actions",
-      header: () => <span className="text-primary font-semibold">Actions</span>,
+      header: () => (
+        <span className="text-primary font-semibold uppercase">Actions</span>
+      ),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <TooltipProvider>
@@ -311,109 +208,19 @@ export function CertificateTable({
     columns,
     state: {
       sorting,
-      rowSelection,
     },
     onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedCount = selectedRows.length;
-
-  const handleBulkRevoke = () => {
-    const hashes = selectedRows.map((row) => row.original.cert_hash);
-    bulkRevoke(hashes, {
-      onSuccess: () => {
-        setRowSelection({});
-      },
-    });
-  };
-
-  const handleBulkReactivate = () => {
-    const hashes = selectedRows.map((row) => row.original.cert_hash);
-    bulkReactivate(hashes, {
-      onSuccess: () => {
-        setRowSelection({});
-      },
-    });
-  };
-
   return (
-    <div className="space-y-4 relative">
-      {/* Always Visible Toolbar */}
-      <div className="flex items-center justify-between gap-2 p-4 border rounded-lg bg-accent/50">
-        <div className="flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkRevoke}
-                  disabled={
-                    selectedCount === 0 ||
-                    isAnyOperationPending ||
-                    (!user?.is_admin && selectedCount > 1)
-                  }
-                >
-                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
-                    <Ban className="h-3 w-3 text-red-700 dark:text-red-300" />
-                  </div>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {!user?.is_admin && selectedCount > 1
-                  ? "Bulk actions require admin privileges"
-                  : "Revoke Certificate(s)"}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkReactivate}
-                  disabled={
-                    selectedCount === 0 ||
-                    isAnyOperationPending ||
-                    (!user?.is_admin && selectedCount > 1)
-                  }
-                >
-                  <div className="rounded-full bg-green-100 dark:bg-green-900 p-1">
-                    <CheckCircle className="h-3 w-3 text-green-700 dark:text-green-300" />
-                  </div>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {!user?.is_admin && selectedCount > 1
-                  ? "Bulk actions require admin privileges"
-                  : "Reactivate Certificate(s)"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {selectedCount > 0 && (
-            <span className="text-sm text-muted-foreground ml-2">
-              {selectedCount} of {data.length} selected
-            </span>
-          )}
-        </div>
-
-        {/* Filters on the right */}
-        {filterComponent && <div>{filterComponent}</div>}
-      </div>
-
-      {/* Loading Overlay - Table scope only */}
-      {isAnyOperationPending && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm font-medium">Processing...</p>
-          </div>
+    <div className="space-y-4">
+      {/* Toolbar with Filters Only */}
+      {filterComponent && (
+        <div className="flex items-center justify-end gap-2 p-4 border rounded-lg bg-accent/50">
+          {filterComponent}
         </div>
       )}
 
@@ -441,7 +248,6 @@ export function CertificateTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
                   className={
                     row.original.is_revoked
                       ? "bg-muted text-muted-foreground hover:bg-muted"

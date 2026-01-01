@@ -116,7 +116,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 -ml-3 text-primary font-semibold uppercase"
           >
             Username
             {isSorted === "asc" ? (
@@ -133,7 +133,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
         <div className="flex items-center gap-2">
           <Link
             href={`/users/${row.original.wallet_address}`}
-            className="font-medium hover:underline"
+            className="text-blue-700 dark:text-blue-500 hover:underline font-semibold"
           >
             {row.original.username}
           </Link>
@@ -157,7 +157,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 -ml-3 text-primary font-semibold uppercase"
           >
             Email
             {isSorted === "asc" ? (
@@ -179,7 +179,7 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="flex items-center gap-1 -ml-4 text-primary font-semibold"
+            className="flex items-center gap-1 ml-2 text-primary font-semibold uppercase"
           >
             Status
             {isSorted === "asc" ? (
@@ -199,7 +199,9 @@ export function UserTable({ data, filterComponent }: UserTableProps) {
     {
       accessorKey: "wallet_address",
       header: () => (
-        <span className="text-primary font-semibold">Wallet Address</span>
+        <span className="text-primary font-semibold uppercase">
+          Wallet Address
+        </span>
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">

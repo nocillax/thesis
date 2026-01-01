@@ -144,7 +144,7 @@ export default function CertificatesPage() {
           />
 
           {/* Pagination and Count */}
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mt-6 flex items-center justify-end">
             {/* Total Count */}
             {meta && (
               <div className="text-sm text-muted-foreground font-medium">
