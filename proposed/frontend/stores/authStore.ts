@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { usersAPI } from "@/lib/api/users";
+import { sessionsAPI } from "@/lib/api/sessions";
 import { User } from "@/types/user";
 
 interface AuthState {
@@ -16,7 +17,7 @@ interface AuthState {
     token: string;
   }) => void;
   setUser: (user: User | null) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
 }
 
@@ -46,8 +47,18 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user }),
 
-      logout: () => {
+      logout: async () => {
+        // Record logout session BEFORE clearing token
         if (typeof window !== "undefined") {
+          const isAuthenticated = get().isAuthenticated;
+          if (isAuthenticated) {
+            try {
+              await sessionsAPI.recordLogout();
+            } catch (error) {
+              console.error("Failed to record logout:", error);
+            }
+          }
+
           localStorage.removeItem("access_token");
           // Clear user polling interval
           const existingInterval = (window as any).__userPollingInterval;

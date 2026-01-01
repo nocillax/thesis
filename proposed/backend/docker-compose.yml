@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: proposed-postgres
+    restart: always
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nocillax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-2272}
+      POSTGRES_DB: ${POSTGRES_DB:-cert_proposed_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-nocillax} -d ${POSTGRES_DB:-cert_proposed_db}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

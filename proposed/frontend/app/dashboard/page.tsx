@@ -11,6 +11,7 @@ import {
   Shield,
   TrendingUp,
   Clock,
+  FileClock,
   History,
   CheckCircle2,
   UserCheck,
@@ -26,6 +27,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { statsAPI } from "@/lib/api/stats";
+import { certificateActionRequestsAPI } from "@/lib/api/certificate-action-requests";
+import { auditLogsAPI } from "@/lib/api/auditLogs";
+import { sessionsAPI } from "@/lib/api/sessions";
 import {
   Card,
   CardContent,
@@ -63,12 +67,25 @@ const getActionBadgeVariant = (action: string) => {
   }
 };
 
+const getWalletFromLog = (log: any) => {
+  switch (log.action) {
+    case "ISSUED":
+      return log.issuer;
+    case "REVOKED":
+      return log.revoked_by;
+    case "REACTIVATED":
+      return log.reactivated_by;
+    default:
+      return log.issuer;
+  }
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push("/");
   };
 
@@ -84,6 +101,52 @@ export default function DashboardPage() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 0,
+  });
+
+  const { data: pendingRequestsCount } = useQuery({
+    queryKey: ["pending-action-requests-count"],
+    queryFn: certificateActionRequestsAPI.getPendingCount,
+    enabled: isAuthenticated && user?.is_admin === true,
+    refetchInterval: 30000, // Poll every 30 seconds
+  });
+
+  const { data: myNonCompletedCount } = useQuery({
+    queryKey: ["my-non-completed-requests-count"],
+    queryFn: certificateActionRequestsAPI.getMyNonCompletedCount,
+    enabled: isAuthenticated && user?.is_admin === false,
+    refetchInterval: 30000,
+  });
+
+  const { data: recentSystemActivity } = useQuery({
+    queryKey: ["recent-system-activity"],
+    queryFn: () => auditLogsAPI.getAll(1, 5),
+    enabled: isAuthenticated && user?.is_admin === true,
+    refetchInterval: 30000,
+  });
+
+  const { data: lastOfflinePeriod } = useQuery({
+    queryKey: ["last-offline-period"],
+    queryFn: sessionsAPI.getLastOfflinePeriod,
+    enabled: isAuthenticated && user?.is_admin === true,
+  });
+
+  const { data: offlineActivities } = useQuery({
+    queryKey: [
+      "offline-activities",
+      lastOfflinePeriod?.start,
+      lastOfflinePeriod?.end,
+    ],
+    queryFn: () => {
+      if (!lastOfflinePeriod) return [];
+      return auditLogsAPI.getByTimeRange(
+        lastOfflinePeriod.start,
+        lastOfflinePeriod.end,
+        1,
+        5
+      );
+    },
+    enabled: isAuthenticated && user?.is_admin === true && !!lastOfflinePeriod,
+    refetchInterval: 60000,
   });
 
   useEffect(() => {
@@ -129,6 +192,45 @@ export default function DashboardPage() {
           user.is_admin ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-3"
         }`}
       >
+        {/* Pending Revocation Requests (Admin) or Pending Requests (Staff) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-bold text-foreground uppercase tracking-wide">
+                Pending Requests
+              </CardTitle>
+              <div className="h-10 w-10 flex items-center justify-center">
+                <FileClock className="h-5 w-5 text-chart-1" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <>
+                <div className="text-5xl font-bold text-foreground mb-3">
+                  {user.is_admin
+                    ? pendingRequestsCount ?? "-"
+                    : myNonCompletedCount ?? "-"}
+                </div>
+                <p className="text-sm text-muted-foreground font-medium">
+                  {user.is_admin
+                    ? "Action requests awaiting review"
+                    : "Your non-completed requests"}
+                </p>
+                <Link
+                  href="/certificate-action-requests"
+                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors mt-3"
+                >
+                  View All Requests
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Active Certificates */}
         <Card>
           <CardHeader className="pb-3">
@@ -216,63 +318,203 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-bold text-foreground uppercase tracking-wide">
-                Recent Activity
-              </CardTitle>
-              <div className="h-10 w-10 flex items-center justify-center">
-                <History className="h-5 w-5 text-chart-1" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <LoadingSpinner size="sm" />
-            ) : stats?.recent_activity && stats.recent_activity.length > 0 ? (
-              <div className="space-y-3">
-                {stats.recent_activity.map((log, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 p-2 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      {getActionIcon(log.action)}
-                      <Badge
-                        variant="outline"
-                        className={`${getActionBadgeVariant(
-                          log.action
-                        )} text-[10px] font-semibold`}
-                      >
-                        {log.action}
-                      </Badge>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium">
-                      {formatDistanceToNow(new Date(log.timestamp), {
-                        addSuffix: true,
-                      })}
-                    </span>
-                  </div>
-                ))}
-                <Link
-                  href={`/users/${user.wallet_address}`}
-                  className="flex items-center justify-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors mt-3 py-2 rounded-md hover:bg-primary/5"
-                >
-                  View All Activity
-                  <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground font-medium">
-                No recent activity
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Admin Activity Sections */}
+      {user.is_admin && (
+        <>
+          <div className="flex items-center gap-4 mb-8">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border" />
+            <h2 className="text-xl font-bold text-foreground uppercase tracking-wide">
+              Activity Overview
+            </h2>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border" />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 mb-10">
+            {/* Recent Activity Section */}
+            <Card className="border min-h-[400px] flex flex-col">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 rounded-lg bg-chart-2 flex items-center justify-center">
+                    <History className="h-5 w-5 text-chart-1" />
+                  </div>
+                  <CardTitle className="text-lg font-bold">
+                    Recent Activity
+                  </CardTitle>
+                </div>
+                <CardDescription className="font-medium">
+                  Latest system-wide certificate actions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col pt-4">
+                {!recentSystemActivity ? (
+                  <div className="flex items-center justify-center flex-1">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : (Array.isArray(recentSystemActivity)
+                    ? recentSystemActivity
+                    : (recentSystemActivity as any)?.data || []
+                  ).length > 0 ? (
+                  <div className="space-y-2 flex-1">
+                    {(Array.isArray(recentSystemActivity)
+                      ? recentSystemActivity
+                      : (recentSystemActivity as any)?.data || []
+                    ).map((log: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50"
+                      >
+                        <Badge
+                          variant="outline"
+                          className={`${getActionBadgeVariant(
+                            log.action
+                          )} text-xs font-semibold flex-shrink-0`}
+                        >
+                          {log.action}
+                        </Badge>
+                        <span className="text-xs font-bold text-muted-foreground flex-shrink-0">
+                          -
+                        </span>
+                        <span className="text-xs font-bold text-muted-foreground flex-shrink-0">
+                          Certificate:
+                        </span>
+                        <span className="text-xs font-mono text-foreground flex-shrink-0">
+                          {log.cert_hash.slice(0, 8)}...
+                          {log.cert_hash.slice(-6)}
+                        </span>
+                        <span className="text-xs font-bold text-muted-foreground flex-shrink-0">
+                          - by -
+                        </span>
+                        <span className="text-xs font-mono text-foreground flex-shrink-0">
+                          {getWalletFromLog(log)?.slice(0, 6)}...
+                          {getWalletFromLog(log)?.slice(-4)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-medium ml-auto flex-shrink-0">
+                          {formatDistanceToNow(new Date(log.timestamp), {
+                            addSuffix: true,
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-3">
+                    <History className="h-16 w-16 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground font-medium">
+                      No recent activity
+                    </p>
+                  </div>
+                )}
+                <div className="pt-4 mt-auto">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
+                  >
+                    <Link href="/audit-logs/system">
+                      View All Activity
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Offline Activity Section */}
+            <Card className="border min-h-[400px] flex flex-col">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 rounded-lg bg-chart-2 flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-chart-1" />
+                  </div>
+                  <CardTitle className="text-lg font-bold">
+                    While You Were Away
+                  </CardTitle>
+                </div>
+                <CardDescription className="font-medium">
+                  Activities during your last offline period
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col pt-4">
+                {!lastOfflinePeriod ? (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-3">
+                    <Clock className="h-16 w-16 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground font-medium">
+                      No offline period detected
+                    </p>
+                  </div>
+                ) : !offlineActivities ? (
+                  <div className="flex items-center justify-center flex-1">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : Array.isArray(offlineActivities) &&
+                  offlineActivities.length > 0 ? (
+                  <div className="space-y-2 flex-1">
+                    {offlineActivities.map((log: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50"
+                      >
+                        <Badge
+                          variant="outline"
+                          className={`${getActionBadgeVariant(
+                            log.action
+                          )} text-xs font-semibold flex-shrink-0`}
+                        >
+                          {log.action}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          -
+                        </span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          Certificate:
+                        </span>
+                        <span className="text-xs font-mono text-foreground flex-shrink-0">
+                          {log.cert_hash.slice(0, 8)}...
+                          {log.cert_hash.slice(-6)}
+                        </span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          - by -
+                        </span>
+                        <span className="text-xs font-mono text-foreground flex-shrink-0">
+                          {getWalletFromLog(log)?.slice(0, 6)}...
+                          {getWalletFromLog(log)?.slice(-4)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-medium ml-auto flex-shrink-0">
+                          {formatDistanceToNow(new Date(log.timestamp), {
+                            addSuffix: true,
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-3">
+                    <Clock className="h-16 w-16 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground font-medium">
+                      No activity while you were offline
+                    </p>
+                  </div>
+                )}
+                <div className="pt-4 mt-auto">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
+                    disabled={!lastOfflinePeriod}
+                  >
+                    <Link href="/offline-activities">
+                      View All Offline Activity
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* Section Divider */}
       <div className="flex items-center gap-4 mb-8">

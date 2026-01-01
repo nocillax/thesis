@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import puppeteer from 'puppeteer';
+import * as QRCode from 'qrcode';
 
 interface Certificate {
   student_id: string;
@@ -12,6 +13,7 @@ interface Certificate {
   issuance_date: number | string | null;
   issuing_authority: string;
   is_revoked: boolean;
+  cert_hash?: string; // Add cert_hash for QR code
 }
 
 @Injectable()
@@ -21,6 +23,22 @@ export class PdfService {
     'public/templates/certificate-template.html',
   );
   private browser: any = null;
+
+  /**
+   * Generate QR code as base64 data URL
+   */
+  private async generateQRCode(certHash: string): Promise<string> {
+    try {
+      return await QRCode.toDataURL(certHash, {
+        width: 75,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      });
+    } catch (error) {
+      console.error('QR code generation failed:', error);
+      return ''; // Return empty string if QR generation fails
+    }
+  }
 
   async generateCertificatePng(certificate: Certificate): Promise<Buffer> {
     // Read the HTML template
@@ -35,6 +53,11 @@ export class PdfService {
         })
       : 'N/A';
 
+    // Generate QR code if cert_hash is provided
+    const qrCodeDataUrl = certificate.cert_hash
+      ? await this.generateQRCode(certificate.cert_hash)
+      : '';
+
     // Replace placeholders with actual data (CGPA is already formatted by backend)
     htmlContent = htmlContent
       .replace(/\{\{STUDENT_NAME\}\}/g, certificate.student_name)
@@ -43,7 +66,8 @@ export class PdfService {
       .replace(/\{\{PROGRAM\}\}/g, certificate.program)
       .replace(/\{\{CGPA\}\}/g, certificate.cgpa.toString())
       .replace(/\{\{DATE_ISSUED\}\}/g, dateIssued)
-      .replace(/\{\{ISSUING_AUTHORITY\}\}/g, certificate.issuing_authority);
+      .replace(/\{\{ISSUING_AUTHORITY\}\}/g, certificate.issuing_authority)
+      .replace(/\{\{QR_CODE\}\}/g, qrCodeDataUrl);
 
     // Add REVOKED watermark if needed
     const watermarkHtml = certificate.is_revoked
@@ -91,6 +115,11 @@ export class PdfService {
         })
       : 'N/A';
 
+    // Generate QR code if cert_hash is provided
+    const qrCodeDataUrl = certificate.cert_hash
+      ? await this.generateQRCode(certificate.cert_hash)
+      : '';
+
     // Replace placeholders with actual data (CGPA is already formatted by backend)
     htmlContent = htmlContent
       .replace(/\{\{STUDENT_NAME\}\}/g, certificate.student_name)
@@ -99,7 +128,8 @@ export class PdfService {
       .replace(/\{\{PROGRAM\}\}/g, certificate.program)
       .replace(/\{\{CGPA\}\}/g, certificate.cgpa.toString())
       .replace(/\{\{DATE_ISSUED\}\}/g, dateIssued)
-      .replace(/\{\{ISSUING_AUTHORITY\}\}/g, certificate.issuing_authority);
+      .replace(/\{\{ISSUING_AUTHORITY\}\}/g, certificate.issuing_authority)
+      .replace(/\{\{QR_CODE\}\}/g, qrCodeDataUrl);
 
     // Add REVOKED watermark if needed
     const watermarkHtml = certificate.is_revoked

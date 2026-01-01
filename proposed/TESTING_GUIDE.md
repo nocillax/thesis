@@ -621,6 +621,14 @@ Authorization: Bearer YOUR_TOKEN
 Authorization: Bearer YOUR_TOKEN
 ```
 
+**Body:**
+
+```json
+{
+  "reason": "Certificate issued in error"
+}
+```
+
 **Example:** `PATCH /api/blockchain/certificates/0xabcd1234.../revoke`
 
 **Response:**
@@ -633,6 +641,8 @@ Authorization: Bearer YOUR_TOKEN
   "block_number": 124
 }
 ```
+
+**Note:** Reason is required (1-500 characters) and will be stored on blockchain as publicly visible.
 
 ---
 
@@ -977,6 +987,613 @@ Authorization: Bearer YOUR_TOKEN
 ```
 
 **Note:** Returns ALL certificate versions for a student, including revoked ones. Useful for audit trails and history tracking.
+
+---
+
+## 18. Sync Student Data
+
+**Endpoint:** `GET /students/sync/:student_id`
+
+**Auth:** JWT Required (any authenticated user)
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /students/sync/22-46734-1`
+
+**Response (Success):**
+
+```json
+{
+  "student_id": "22-46734-1",
+  "student_name": "Alice Johnson",
+  "degree": "Bachelor of Science",
+  "program": "Computer Science",
+  "cgpa": 3.85
+}
+```
+
+**Response (Error - Credits Incomplete):**
+
+```json
+{
+  "statusCode": 400,
+  "message": "Student has 12 credits remaining. Cannot issue certificate.",
+  "error": "Bad Request"
+}
+```
+
+**Note:** Validates that `credit_remaining = 0` before allowing certificate issuance. Returns 404 if student not found in database.
+
+---
+
+## 19. Submit Verifier Information
+
+**Endpoint:** `POST /verifiers/submit`
+
+**Auth:** None (Public)
+
+**Body:**
+
+```json
+{
+  "name": "John Verifier",
+  "email": "john@company.com",
+  "institution": "ABC Corporation",
+  "website": "https://abc.com",
+  "cert_hash": "0xabcd1234..."
+}
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Verification recorded",
+  "remaining_attempts": 2
+}
+```
+
+**Response (Rate Limited):**
+
+```json
+{
+  "statusCode": 429,
+  "message": "Rate limit exceeded: 3 attempts on certificate 0xabcd... within 15 minutes. Try again in 60 minutes.",
+  "error": "Too Many Requests"
+}
+```
+
+**Response (Blocked):**
+
+```json
+{
+  "statusCode": 403,
+  "message": "Your IP address is blocked until 2025-12-22T10:30:00Z",
+  "error": "Forbidden"
+}
+```
+
+**Note:** Rate limit: 3 verifications per certificate per IP within 15 minutes. Exceeding limit results in 60-minute auto-block. Returns `remaining_attempts` in response.
+
+---
+
+## 20. Get Verification Logs (Admin)
+
+**Endpoint:** `GET /verifiers/logs`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Query Parameters:**
+
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 20)
+
+**Example:** `GET /verifiers/logs?page=1&limit=20`
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "cert_hash": "0xabcd1234...",
+      "ip_address": "192.168.1.100",
+      "user_agent": "Mozilla/5.0...",
+      "verified_at": "2025-12-22T08:30:00.000Z",
+      "verifier": {
+        "id": 5,
+        "name": "John Verifier",
+        "email": "john@company.com",
+        "institution": "ABC Corporation",
+        "website": "https://abc.com"
+      }
+    }
+  ],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 8
+  }
+}
+```
+
+**Note:** Returns paginated verification logs with verifier details joined.
+
+---
+
+## 21. Get Blocked Verifiers (Admin)
+
+**Endpoint:** `GET /verifiers/blocked`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "ip_address": "192.168.1.100",
+    "blocked_until": "2025-12-22T10:30:00.000Z",
+    "reason": "Rate limit exceeded: 3 attempts on certificate 0xabcd... within 15 minutes",
+    "blocked_by_wallet_address": null,
+    "created_at": "2025-12-22T09:30:00.000Z"
+  },
+  {
+    "id": 2,
+    "ip_address": "10.0.0.50",
+    "blocked_until": "2025-12-25T12:00:00.000Z",
+    "reason": "Suspicious verification activity",
+    "blocked_by_wallet_address": "0x08Bd40C733...",
+    "created_at": "2025-12-22T08:00:00.000Z"
+  }
+]
+```
+
+**Note:** Returns only active blocks (blocked_until > now). Auto-blocks have `blocked_by_wallet_address = null`.
+
+---
+
+## 22. Block Verifier IP (Admin)
+
+**Endpoint:** `POST /verifiers/block`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Body:**
+
+```json
+{
+  "ip_address": "192.168.1.100",
+  "duration_minutes": 1440,
+  "reason": "Suspicious verification activity"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "IP address blocked successfully",
+  "blocked_until": "2025-12-23T09:30:00.000Z"
+}
+```
+
+**Note:** Manual block with custom duration and reason. `blocked_by_wallet_address` set to admin's wallet.
+
+---
+
+## 23. Unblock Verifier IP (Admin)
+
+**Endpoint:** `DELETE /verifiers/unblock/:ip_address`
+
+**Auth:** Admin JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `DELETE /verifiers/unblock/192.168.1.100`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "IP address unblocked successfully"
+}
+```
+
+**Note:** Removes block from database and clears rate limit cache for the IP.
+
+---
+
+## 24. Record Login Session
+
+**Endpoint:** `POST /sessions/login`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Body:**
+
+```json
+{
+  "ip_address": "192.168.1.100",
+  "user_agent": "Mozilla/5.0 (X11; Linux x86_64)..."
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Login session recorded",
+  "session": {
+    "id": 1,
+    "wallet_address": "0x08Bd40C733...",
+    "user_name": "admin",
+    "login_at": "2025-12-22T09:30:00.000Z",
+    "session_status": "active"
+  }
+}
+```
+
+**Note:** Called automatically after successful wallet login to track admin sessions.
+
+---
+
+## 25. Record Logout Session
+
+**Endpoint:** `POST /sessions/logout`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Logout session recorded",
+  "sessions_updated": 1
+}
+```
+
+**Note:** Marks all active sessions for the user as `logged_out`. Called automatically on logout.
+
+---
+
+## 26. Get My Sessions
+
+**Endpoint:** `GET /sessions/my-sessions`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Query Parameters:**
+
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 20)
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 5,
+      "wallet_address": "0x08Bd40C733...",
+      "user_name": "admin",
+      "login_at": "2025-12-22T09:30:00.000Z",
+      "logout_at": "2025-12-22T11:45:00.000Z",
+      "session_status": "logged_out",
+      "ip_address": "192.168.1.100",
+      "user_agent": "Mozilla/5.0..."
+    }
+  ],
+  "meta": {
+    "total": 47,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 3
+  }
+}
+```
+
+**Note:** Returns user's own session history ordered by login_at descending.
+
+---
+
+## 27. Get Offline Periods
+
+**Endpoint:** `GET /sessions/offline-periods`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Query Parameters:**
+
+- `start_date` - Filter from date (ISO format, optional)
+- `end_date` - Filter to date (ISO format, optional)
+
+**Example:** `GET /sessions/offline-periods?start_date=2025-12-01&end_date=2025-12-22`
+
+**Response:**
+
+```json
+[
+  {
+    "offline_start": "2025-12-22T11:45:00.000Z",
+    "offline_end": "2025-12-22T14:30:00.000Z",
+    "duration_minutes": 165
+  },
+  {
+    "offline_start": "2025-12-21T18:00:00.000Z",
+    "offline_end": "2025-12-22T09:30:00.000Z",
+    "duration_minutes": 930
+  }
+]
+```
+
+**Note:** Calculates gaps between logout and next login. Useful for tracking admin availability.
+
+---
+
+## 28. Get Session Statistics
+
+**Endpoint:** `GET /sessions/stats`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "total_sessions": 47,
+  "active_sessions": 1,
+  "logged_out_sessions": 40,
+  "expired_sessions": 6,
+  "average_session_duration_minutes": 135
+}
+```
+
+**Note:** Aggregated statistics for user's sessions.
+
+---
+
+## 29. Get Active Session
+
+**Endpoint:** `GET /sessions/active`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "id": 5,
+  "wallet_address": "0x08Bd40C733...",
+  "user_name": "admin",
+  "login_at": "2025-12-22T09:30:00.000Z",
+  "session_status": "active",
+  "ip_address": "192.168.1.100",
+  "user_agent": "Mozilla/5.0..."
+}
+```
+
+**Note:** Returns currently active session or 404 if none active.
+
+---
+
+## 30. Get Offline Activities
+
+**Endpoint:** `GET /offline-activities`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Query Parameters:**
+
+- `start_date` - Filter from date (ISO format, optional)
+- `end_date` - Filter to date (ISO format, optional)
+
+**Example:** `GET /offline-activities?start_date=2025-12-01`
+
+**Response:**
+
+```json
+[
+  {
+    "offline_period": {
+      "offline_start": "2025-12-22T11:45:00.000Z",
+      "offline_end": "2025-12-22T14:30:00.000Z",
+      "duration_minutes": 165
+    },
+    "events": [
+      {
+        "action": "ISSUED",
+        "cert_hash": "0xabcd1234...",
+        "student_id": "22-46734-1",
+        "version": 1,
+        "timestamp": "2025-12-22T12:30:00.000Z",
+        "block_number": 123,
+        "transaction_hash": "0x5678..."
+      },
+      {
+        "action": "REVOKED",
+        "cert_hash": "0xefgh5678...",
+        "timestamp": "2025-12-22T13:15:00.000Z",
+        "block_number": 125,
+        "transaction_hash": "0x9abc..."
+      }
+    ]
+  }
+]
+```
+
+**Note:** Shows blockchain events that occurred during admin's offline periods.
+
+---
+
+## 31. Get Missed Activities Count
+
+**Endpoint:** `GET /offline-activities/count`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "count": 12
+}
+```
+
+**Note:** Total number of blockchain events during all offline periods.
+
+---
+
+## 32. Download Certificate PDF
+
+**Endpoint:** `GET /api/blockchain/certificates/:hash/download`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /api/blockchain/certificates/0xabcd1234.../download`
+
+**Response:** PDF file download with QR code embedded
+
+**Note:** Generates certificate PDF with 75x75px QR code at bottom-center containing certificate hash.
+
+---
+
+## 33. Preview Certificate PNG
+
+**Endpoint:** `GET /api/blockchain/certificates/:hash/preview`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /api/blockchain/certificates/0xabcd1234.../preview`
+
+**Response:** PNG image with QR code embedded
+
+**Note:** Generates certificate preview PNG with 75x75px QR code at bottom-center containing certificate hash.
+
+---
+
+## 34. Get Revoke Reason
+
+**Endpoint:** `GET /api/blockchain/certificates/:hash/revoke-reason`
+
+**Auth:** JWT Required
+
+**Headers:**
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Example:** `GET /api/blockchain/certificates/0xabcd1234.../revoke-reason`
+
+**Response:**
+
+```json
+{
+  "cert_hash": "0xabcd1234...",
+  "reason": "Certificate issued in error",
+  "revoked_by": "0x08Bd40C733...",
+  "revoked_by_name": "admin",
+  "timestamp": "2025-12-22T10:30:00.000Z",
+  "block_number": 125
+}
+```
+
+**Note:** Fetches revoke reason from blockchain CertificateRevoked event. Returns 404 if certificate not revoked.
 
 ---
 

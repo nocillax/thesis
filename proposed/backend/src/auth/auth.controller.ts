@@ -8,11 +8,15 @@ import {
   forwardRef,
   UnauthorizedException,
   NotFoundException,
+  Ip,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { IsString } from 'class-validator';
 import { WalletLoginDto } from './wallet-login.dto';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { SessionService } from '../blockchain/services/session.service';
+import type { Request } from 'express';
 
 @Controller('api/auth')
 export class AuthController {
@@ -20,11 +24,17 @@ export class AuthController {
     private authService: AuthService,
     @Inject(forwardRef(() => BlockchainService))
     private blockchainService: BlockchainService,
+    @Inject(forwardRef(() => SessionService))
+    private sessionService: SessionService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('wallet-login')
-  async walletLogin(@Body() dto: WalletLoginDto) {
+  async walletLogin(
+    @Body() dto: WalletLoginDto,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
     // Verify signature
     const { verified, walletAddress } = await this.authService.walletLogin(
       dto.walletAddress,
@@ -47,6 +57,14 @@ export class AuthController {
           'Access denied: Your account is not authorized to login. Please contact an administrator.',
         );
       }
+
+      // Record login session
+      await this.sessionService.createSession(
+        walletAddress,
+        user.username,
+        ip,
+        req.headers['user-agent'],
+      );
 
       // Generate JWT token
       return this.authService.generateToken(

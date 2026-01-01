@@ -10,6 +10,12 @@ Next.js web application for blockchain certificate management with wallet-based 
 npm install
 ```
 
+**Note**: The PDF.js worker file (`pdf.worker.min.mjs`) is copied to the `public/` folder for QR code scanning functionality. If you update the `pdfjs-dist` package, re-copy the worker file:
+
+```bash
+cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/
+```
+
 ### 2. Configure Environment
 
 ```bash

@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  Max,
+  Length,
+} from 'class-validator';
 
 export class IssueCertificateDto {
   @IsString()
@@ -50,4 +57,11 @@ export class UpdateCertificateDto {
   @Min(0)
   @Max(4)
   cgpa: number;
+}
+
+export class RevokeCertificateDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 500, { message: 'Reason must be between 1 and 500 characters' })
+  reason: string;
 }

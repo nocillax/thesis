@@ -70,7 +70,8 @@ export function useRevokeCertificate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: certificatesAPI.revoke,
+    mutationFn: ({ hash, reason }: { hash: string; reason: string }) =>
+      certificatesAPI.revoke(hash, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["certificates"] });
       toast.success("Certificate revoked");

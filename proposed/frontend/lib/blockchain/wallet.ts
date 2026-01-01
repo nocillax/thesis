@@ -1,5 +1,12 @@
 import { ethers } from "ethers";
 
+// Extend Window interface to include ethereum
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 export interface WalletConnection {
   address: string;
   provider: ethers.BrowserProvider;

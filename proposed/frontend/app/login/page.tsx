@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,22 @@ import {
   createLoginMessage,
 } from "@/lib/blockchain/wallet";
 import { authAPI } from "@/lib/api/auth";
+import { sessionsAPI } from "@/lib/api/sessions";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const router = useRouter();
-  const { setAuth, fetchUser, user } = useAuthStore();
+  const { setAuth, fetchUser, user, isAuthenticated, isLoading } =
+    useAuthStore();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const handleWalletLogin = async () => {
     setIsConnecting(true);

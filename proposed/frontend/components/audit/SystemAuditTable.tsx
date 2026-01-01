@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { format } from "date-fns";
+import { formatDateTime } from "@/lib/utils/format";
 import { FileCheck, Ban, RefreshCw, ExternalLink } from "lucide-react";
 import {
   Table,
@@ -111,7 +111,7 @@ export function SystemAuditTable({ logs }: SystemAuditTableProps) {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {format(new Date(log.timestamp), "hh:mm a")}
+                    {formatDateTime(log.timestamp)}
                   </span>
                 </TableCell>
               </TableRow>

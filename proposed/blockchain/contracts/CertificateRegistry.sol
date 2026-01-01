@@ -49,6 +49,8 @@ contract CertificateRegistry {
     event CertificateRevoked(
         bytes32 indexed cert_hash,
         address indexed revoked_by,
+        string reason,
+        uint256 timestamp,
         uint256 block_number
     );
 
@@ -157,10 +159,11 @@ contract CertificateRegistry {
         );
     }
 
-    function revokeCertificate(bytes32 cert_hash, address actor_address) external {
+    function revokeCertificate(bytes32 cert_hash, address actor_address, string memory reason) external {
         require(userRegistry.isAuthorized(actor_address), "Provided actor is not authorized");
         require(msg.sender == admin || msg.sender == actor_address, "Only admin or the actor can revoke certificates");
         require(certificate_exists[cert_hash], "Certificate does not exist");
+        require(bytes(reason).length > 0 && bytes(reason).length <= 500, "Reason must be 1-500 characters");
 
         Certificate storage cert = certificates[cert_hash];
         cert.is_revoked = true;
@@ -170,7 +173,7 @@ contract CertificateRegistry {
             student_to_active_cert_hash[cert.student_id] = bytes32(0);
         }
 
-        emit CertificateRevoked(cert_hash, actor_address, block.number);
+        emit CertificateRevoked(cert_hash, actor_address, reason, block.timestamp, block.number);
     }
 
     function reactivateCertificate(bytes32 cert_hash, address actor_address) external {

@@ -60,9 +60,18 @@ export const certificatesAPI = {
   },
 
   // Revoke certificate
-  revoke: async (hash: string) => {
+  revoke: async (hash: string, reason: string) => {
     const response = await apiClient.patch(
-      `/api/blockchain/certificates/${hash}/revoke`
+      `/api/blockchain/certificates/${hash}/revoke`,
+      { reason }
+    );
+    return response.data;
+  },
+
+  // Get revoke reason
+  getRevokeReason: async (hash: string) => {
+    const response = await apiClient.get(
+      `/api/blockchain/certificates/${hash}/revoke-reason`
     );
     return response.data;
   },

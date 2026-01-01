@@ -50,6 +50,26 @@ export const auditLogsAPI = {
     return response.data;
   },
 
+  // Get audit logs by time range with pagination
+  getByTimeRange: async (
+    start: string,
+    end: string,
+    page?: number,
+    limit?: number
+  ): Promise<AuditLogEntry[] | PaginatedAuditLogs> => {
+    const params = new URLSearchParams();
+    params.append("start", start);
+    params.append("end", end);
+    if (page) params.append("page", page.toString());
+    if (limit) params.append("limit", limit.toString());
+
+    const url = `/api/blockchain/certificates/audit-logs?${params.toString()}`;
+    const response = await apiClient.get<AuditLogEntry[] | PaginatedAuditLogs>(
+      url
+    );
+    return response.data;
+  },
+
   // Get audit logs for a specific user with pagination
   getByUser: async (
     walletAddress: string,

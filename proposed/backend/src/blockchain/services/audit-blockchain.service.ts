@@ -129,6 +129,39 @@ export class AuditBlockchainService {
     return this.applyPagination(sorted, page, limit);
   }
 
+  async getAuditLogsByTimeRange(
+    startTime: Date,
+    endTime: Date,
+    page?: number,
+    limit?: number,
+  ) {
+    const issuedFilter = this.certificateContract.filters.CertificateIssued();
+    const revokedFilter = this.certificateContract.filters.CertificateRevoked();
+    const reactivatedFilter =
+      this.certificateContract.filters.CertificateReactivated();
+
+    const [issuedEvents, revokedEvents, reactivatedEvents] = await Promise.all([
+      this.certificateContract.queryFilter(issuedFilter),
+      this.certificateContract.queryFilter(revokedFilter),
+      this.certificateContract.queryFilter(reactivatedFilter),
+    ]);
+
+    const sorted = await this.processEvents(
+      issuedEvents,
+      revokedEvents,
+      reactivatedEvents,
+    );
+
+    // Filter by time range
+    const filtered = sorted.filter((log) => {
+      if (!log.timestamp) return false;
+      const logDate = new Date(log.timestamp);
+      return logDate >= startTime && logDate <= endTime;
+    });
+
+    return this.applyPagination(filtered, page, limit);
+  }
+
   async getUserAuditLogs(walletAddress: string, page?: number, limit?: number) {
     const issuedFilter = this.certificateContract.filters.CertificateIssued(
       null,

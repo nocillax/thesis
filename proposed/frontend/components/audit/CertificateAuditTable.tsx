@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/common/CopyButton";
-import { truncateAddress } from "@/lib/utils/format";
+import { truncateAddress, formatDateTime } from "@/lib/utils/format";
 import { AuditLogEntry } from "@/lib/api/auditLogs";
 
 interface CertificateAuditTableProps {
@@ -94,7 +94,7 @@ export function CertificateAuditTable({ logs }: CertificateAuditTableProps) {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {format(new Date(log.timestamp), "hh:mm a")}
+                    {formatDateTime(log.timestamp)}
                   </span>
                 </TableCell>
               </TableRow>

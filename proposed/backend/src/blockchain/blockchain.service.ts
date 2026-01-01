@@ -63,7 +63,8 @@ export class BlockchainService implements OnModuleInit {
   computeHash(
     student_id: string,
     student_name: string,
-    degree_program: string,
+    degree: string,
+    program: string,
     cgpa: number,
     version: number,
     issuance_date: number,
@@ -71,7 +72,8 @@ export class BlockchainService implements OnModuleInit {
     return this.certificateBlockchainService.computeHash(
       student_id,
       student_name,
-      degree_program,
+      degree,
+      program,
       cgpa,
       version,
       issuance_date,
@@ -104,11 +106,20 @@ export class BlockchainService implements OnModuleInit {
     return this.certificateBlockchainService.verifyCertificate(cert_hash);
   }
 
-  async revokeCertificate(cert_hash: string, actor_address: string) {
+  async revokeCertificate(
+    cert_hash: string,
+    actor_address: string,
+    reason: string,
+  ) {
     return this.certificateBlockchainService.revokeCertificate(
       cert_hash,
       actor_address,
+      reason,
     );
+  }
+
+  async getRevokeReason(cert_hash: string) {
+    return this.certificateBlockchainService.getRevokeReason(cert_hash);
   }
 
   async reactivateCertificate(cert_hash: string, actor_address: string) {
@@ -124,6 +135,20 @@ export class BlockchainService implements OnModuleInit {
 
   async getAllAuditLogs(page?: number, limit?: number) {
     return this.auditBlockchainService.getAllAuditLogs(page, limit);
+  }
+
+  async getAuditLogsByTimeRange(
+    startTime: Date,
+    endTime: Date,
+    page?: number,
+    limit?: number,
+  ) {
+    return this.auditBlockchainService.getAuditLogsByTimeRange(
+      startTime,
+      endTime,
+      page,
+      limit,
+    );
   }
 
   async getUserAuditLogs(walletAddress: string, page?: number, limit?: number) {

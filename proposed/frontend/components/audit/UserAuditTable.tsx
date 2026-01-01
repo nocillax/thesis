@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { format } from "date-fns";
 import { FileCheck, Ban, RefreshCw } from "lucide-react";
 import {
   Table,
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/common/CopyButton";
-import { truncateHash } from "@/lib/utils/format";
+import { truncateHash, formatDateTime } from "@/lib/utils/format";
 import { AuditLogEntry } from "@/lib/api/auditLogs";
 
 interface UserAuditTableProps {
@@ -88,7 +87,7 @@ export function UserAuditTable({ logs }: UserAuditTableProps) {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {format(new Date(log.timestamp), "hh:mm a")}
+                    {formatDateTime(log.timestamp)}
                   </span>
                 </TableCell>
               </TableRow>

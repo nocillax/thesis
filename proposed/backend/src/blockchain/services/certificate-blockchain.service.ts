@@ -72,7 +72,8 @@ export class CertificateBlockchainService {
   computeHash(
     student_id: string,
     student_name: string,
-    degree_program: string,
+    degree: string,
+    program: string,
     cgpa: number,
     version: number,
     issuance_date: number,
@@ -80,7 +81,8 @@ export class CertificateBlockchainService {
     const data =
       student_id +
       student_name +
-      degree_program +
+      degree +
+      program +
       cgpa.toString() +
       version.toString() +
       issuance_date.toString();
@@ -106,7 +108,8 @@ export class CertificateBlockchainService {
       const cert_hash = this.computeHash(
         student_id,
         student_name,
-        `${degree} - ${program}`,
+        degree,
+        program,
         cgpa,
         version,
         issuance_date,
@@ -178,7 +181,11 @@ export class CertificateBlockchainService {
     }
   }
 
-  async revokeCertificate(cert_hash: string, actor_address: string) {
+  async revokeCertificate(
+    cert_hash: string,
+    actor_address: string,
+    reason: string,
+  ) {
     try {
       const cert = await this.verifyCertificate(cert_hash);
       if (cert.is_revoked) {
@@ -194,6 +201,7 @@ export class CertificateBlockchainService {
       const tx = await this.certificateContract.revokeCertificate(
         cert_hash,
         actor_address,
+        reason,
       );
       const receipt = await tx.wait();
 
@@ -283,7 +291,8 @@ export class CertificateBlockchainService {
         student_id: activeCert.student_id,
         version: Number(activeCert.version),
         student_name: activeCert.student_name,
-        degree_program: activeCert.degree_program,
+        degree: activeCert.degree,
+        program: activeCert.program,
         cgpa: Number(activeCert.cgpa) / 100,
         issuing_authority: activeCert.issuing_authority,
         issuer: activeCert.issuer,
@@ -403,6 +412,37 @@ export class CertificateBlockchainService {
     } catch (error) {
       console.error('Enhanced search error:', error);
       throw new BadRequestException('Failed to perform search');
+    }
+  }
+
+  async getRevokeReason(cert_hash: string) {
+    try {
+      const revokedFilter =
+        this.certificateContract.filters.CertificateRevoked(cert_hash);
+      const revokedEvents =
+        await this.certificateContract.queryFilter(revokedFilter);
+
+      if (revokedEvents.length === 0) {
+        return null;
+      }
+
+      const latestEvent = revokedEvents[revokedEvents.length - 1];
+      if ('args' in latestEvent) {
+        const issuerName = await this.getIssuerName(
+          latestEvent.args.revoked_by,
+        );
+        return {
+          reason: latestEvent.args.reason,
+          revoked_by: latestEvent.args.revoked_by,
+          revoked_by_name: issuerName,
+          revoked_at: this.formatTimestamp(Number(latestEvent.args.timestamp)),
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to get revoke reason:', error);
+      return null;
     }
   }
 }

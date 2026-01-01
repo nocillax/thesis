@@ -47,8 +47,8 @@ export function Header() {
     setLogoSrc(theme === "dark" ? "/logo-light.png" : "/logo-dark.png");
   }, [theme]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push("/");
   };
 

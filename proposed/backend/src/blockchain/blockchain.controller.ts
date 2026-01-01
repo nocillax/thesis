@@ -24,6 +24,7 @@ import {
   IssueCertificateDto,
   VerifyCertificateDto,
   UpdateCertificateDto,
+  RevokeCertificateDto,
 } from './dto/certificate.dto';
 import { RegisterUserDto } from './dto/user.dto';
 
@@ -242,7 +243,10 @@ export class BlockchainController {
   ) {
     const certificate =
       await this.blockchainService.verifyCertificate(cert_hash);
-    const pdfBuffer = await this.pdfService.generateCertificatePdf(certificate);
+    const pdfBuffer = await this.pdfService.generateCertificatePdf({
+      ...certificate,
+      cert_hash,
+    });
 
     res.set({
       'Content-Type': 'application/pdf',
@@ -259,7 +263,10 @@ export class BlockchainController {
   ) {
     const certificate =
       await this.blockchainService.verifyCertificate(cert_hash);
-    const pngBuffer = await this.pdfService.generateCertificatePng(certificate);
+    const pngBuffer = await this.pdfService.generateCertificatePng({
+      ...certificate,
+      cert_hash,
+    });
 
     res.set({
       'Content-Type': 'image/png',
@@ -292,12 +299,20 @@ export class BlockchainController {
   @Patch('certificates/:cert_hash/revoke')
   async revokeCertificate(
     @Param('cert_hash') cert_hash: string,
+    @Body() dto: RevokeCertificateDto,
     @Request() req,
   ) {
     return this.blockchainService.revokeCertificate(
       cert_hash,
       req.user.walletAddress,
+      dto.reason,
     );
+  }
+
+  // Public endpoint - revoke reason should be viewable during public verification
+  @Get('certificates/:cert_hash/revoke-reason')
+  async getRevokeReason(@Param('cert_hash') cert_hash: string) {
+    return this.blockchainService.getRevokeReason(cert_hash);
   }
 
   @UseGuards(AuthGuard('jwt'), AuthorizedGuard)
@@ -318,6 +333,8 @@ export class BlockchainController {
     @Query('cert_hash') cert_hash?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
     @Request() req?: any,
   ) {
     if (!cert_hash) {
@@ -327,6 +344,18 @@ export class BlockchainController {
       );
       if (!user.is_admin) {
         throw new HttpException('Admin access required', HttpStatus.FORBIDDEN);
+      }
+
+      // If time range provided, filter by time
+      if (start && end) {
+        const pageNum = page ? parseInt(page) : undefined;
+        const limitNum = limit ? parseInt(limit) : undefined;
+        return this.blockchainService.getAuditLogsByTimeRange(
+          new Date(start),
+          new Date(end),
+          pageNum,
+          limitNum,
+        );
       }
 
       // If no cert_hash, return all audit logs with pagination
