@@ -16,6 +16,7 @@ import {
   Download,
   FileText,
   Send,
+  Loader2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { certificatesAPI } from "@/lib/api/certificates";
@@ -139,9 +140,25 @@ export default function CertificateDetailPage({
       {
         onSuccess: () => {
           setShowRevokeDialog(false);
+          // Refresh the page to show updated data
+          router.refresh();
+          queryClient.invalidateQueries({ queryKey: ["certificate", hash] });
+          queryClient.invalidateQueries({ queryKey: ["revoke-reason", hash] });
         },
       }
     );
+  };
+
+  const handleReactivate = () => {
+    if (!certificate) return;
+    reactivate(certificate.cert_hash, {
+      onSuccess: () => {
+        // Refresh the page to show updated data
+        router.refresh();
+        queryClient.invalidateQueries({ queryKey: ["certificate", hash] });
+        queryClient.invalidateQueries({ queryKey: ["revoke-reason", hash] });
+      },
+    });
   };
 
   const handleDownloadPDF = () => {
@@ -206,12 +223,21 @@ export default function CertificateDetailPage({
                     {certificate.is_revoked ? (
                       <Button
                         variant="outline"
-                        onClick={() => reactivate(certificate.cert_hash)}
+                        onClick={handleReactivate}
                         disabled={isReactivating}
                         size="lg"
                       >
-                        <RefreshCw className="mr-2 h-5 w-5" />
-                        Reactivate
+                        {isReactivating ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Reactivating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="mr-2 h-5 w-5" />
+                            Reactivate
+                          </>
+                        )}
                       </Button>
                     ) : (
                       <Button
