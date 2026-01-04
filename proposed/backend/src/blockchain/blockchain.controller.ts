@@ -295,7 +295,7 @@ export class BlockchainController {
     return this.blockchainService.getAllVersionsByStudentId(student_id);
   }
 
-  @UseGuards(AuthGuard('jwt'), AuthorizedGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Patch('certificates/:cert_hash/revoke')
   async revokeCertificate(
     @Param('cert_hash') cert_hash: string,
@@ -315,7 +315,7 @@ export class BlockchainController {
     return this.blockchainService.getRevokeReason(cert_hash);
   }
 
-  @UseGuards(AuthGuard('jwt'), AuthorizedGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Patch('certificates/:cert_hash/reactivate')
   async reactivateCertificate(
     @Param('cert_hash') cert_hash: string,
