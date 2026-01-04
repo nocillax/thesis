@@ -19,36 +19,52 @@ export async function extractQRFromPDF(file: File): Promise<string | null> {
     // Scan first page only (certificate should be single page)
     const page = await pdf.getPage(1);
 
-    // Render page to canvas
-    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better QR detection
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+    // Try multiple scales to improve detection on different systems (especially macOS Retina displays)
+    const scales = [4.0, 3.0, 2.5, 2.0, 1.5, 1.0];
 
-    if (!context) {
-      throw new Error("Could not get canvas context");
+    console.log("[QR Scanner] Starting PDF scan with multiple scales...");
+
+    for (const scale of scales) {
+      console.log(`[QR Scanner] Trying scale: ${scale}`);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+
+      if (!context) {
+        throw new Error("Could not get canvas context");
+      }
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      console.log(`[QR Scanner] Canvas size: ${canvas.width}x${canvas.height}`);
+
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+      }).promise;
+
+      // Get image data from canvas
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+      // Try with multiple inversion attempts for better cross-platform compatibility
+      const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "attemptBoth",
+      });
+
+      if (qrCode && qrCode.data) {
+        console.log(
+          `[QR Scanner] ✓ QR code found at scale ${scale}:`,
+          qrCode.data
+        );
+        return qrCode.data;
+      }
+      console.log(`[QR Scanner] ✗ No QR code found at scale ${scale}`);
     }
 
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-      canvas: canvas,
-    }).promise;
-
-    // Get image data from canvas
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Scan for QR code
-    const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert",
-    });
-
-    if (qrCode && qrCode.data) {
-      return qrCode.data;
-    }
-
+    console.error(
+      "[QR Scanner] Failed to find QR code after trying all scales"
+    );
     return null;
   } catch (error) {
     console.error("Error extracting QR from PDF:", error);
@@ -71,7 +87,7 @@ export async function extractQRFromImage(file: File): Promise<string | null> {
 
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const context = canvas.getContext("2d");
+          const context = canvas.getContext("2d", { willReadFrequently: true });
 
           if (!context) {
             reject(new Error("Could not get canvas context"));
@@ -80,6 +96,10 @@ export async function extractQRFromImage(file: File): Promise<string | null> {
 
           canvas.width = img.width;
           canvas.height = img.height;
+
+          console.log(
+            `[QR Scanner] Image size: ${canvas.width}x${canvas.height}`
+          );
 
           context.drawImage(img, 0, 0);
 
@@ -90,18 +110,21 @@ export async function extractQRFromImage(file: File): Promise<string | null> {
             canvas.height
           );
 
+          // Try with multiple inversion attempts for better cross-platform compatibility
           const qrCode = jsQR(
             imageData.data,
             imageData.width,
             imageData.height,
             {
-              inversionAttempts: "dontInvert",
+              inversionAttempts: "attemptBoth",
             }
           );
 
           if (qrCode && qrCode.data) {
+            console.log("[QR Scanner] ✓ QR code found in image:", qrCode.data);
             resolve(qrCode.data);
           } else {
+            console.warn("[QR Scanner] ✗ No QR code found in image");
             resolve(null);
           }
         };
