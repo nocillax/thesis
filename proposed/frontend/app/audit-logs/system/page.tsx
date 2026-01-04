@@ -79,7 +79,7 @@ export default function SystemAuditLogsPage() {
           </div>
           <div>
             <h1 className="text-4xl font-bold tracking-tight mb-1">
-              System Audit Logs
+              Certificate Logs
             </h1>
             <p className="text-muted-foreground font-medium">
               Complete system-wide activity log for all certificates
