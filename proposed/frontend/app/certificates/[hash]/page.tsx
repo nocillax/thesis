@@ -44,7 +44,12 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { CopyButton } from "@/components/common/CopyButton";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { RevokeDialog } from "@/components/certificates/RevokeDialog";
-import { formatDate, formatCGPA, truncateHash } from "@/lib/utils/format";
+import {
+  formatDate,
+  formatCGPA,
+  truncateHash,
+  formatDateTime,
+} from "@/lib/utils/format";
 import { toast } from "sonner";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -343,7 +348,7 @@ export default function CertificateDetailPage({
                   Revoked At
                 </p>
                 <p className="text-sm font-semibold text-foreground">
-                  {revokeReason.revoked_at}
+                  {formatDateTime(revokeReason.revoked_at)}
                 </p>
               </div>
             </div>

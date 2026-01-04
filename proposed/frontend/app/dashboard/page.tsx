@@ -363,34 +363,27 @@ export default function DashboardPage() {
                     ).map((log: any, idx: number) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50"
+                        className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50"
                       >
                         <Badge
                           variant="outline"
                           className={`${getActionBadgeVariant(
                             log.action
-                          )} text-xs font-semibold flex-shrink-0`}
+                          )} text-[10px] sm:text-xs font-semibold flex-shrink-0`}
                         >
                           {log.action}
                         </Badge>
-                        <span className="text-xs font-bold text-muted-foreground flex-shrink-0">
+                        <span className="hidden sm:inline text-xs font-bold text-muted-foreground flex-shrink-0">
                           -
                         </span>
-                        <span className="text-xs font-bold text-muted-foreground flex-shrink-0">
+                        <span className="hidden sm:inline text-xs font-bold text-muted-foreground flex-shrink-0">
                           Certificate:
                         </span>
-                        <span className="text-xs font-mono text-foreground flex-shrink-0">
-                          {log.cert_hash.slice(0, 8)}...
-                          {log.cert_hash.slice(-6)}
+                        <span className="text-[10px] sm:text-xs font-mono text-foreground flex-shrink-0">
+                          {log.cert_hash.slice(0, 6)}...
+                          {log.cert_hash.slice(-4)}
                         </span>
-                        <span className="text-xs font-bold text-muted-foreground flex-shrink-0">
-                          - by -
-                        </span>
-                        <span className="text-xs font-mono text-foreground flex-shrink-0">
-                          {getWalletFromLog(log)?.slice(0, 6)}...
-                          {getWalletFromLog(log)?.slice(-4)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-medium ml-auto flex-shrink-0">
+                        <span className="text-[9px] sm:text-[10px] text-muted-foreground font-medium ml-auto flex-shrink-0">
                           {formatDistanceToNow(new Date(log.timestamp), {
                             addSuffix: true,
                           })}
@@ -454,34 +447,27 @@ export default function DashboardPage() {
                     {offlineActivities.map((log: any, idx: number) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50"
+                        className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50"
                       >
                         <Badge
                           variant="outline"
                           className={`${getActionBadgeVariant(
                             log.action
-                          )} text-xs font-semibold flex-shrink-0`}
+                          )} text-[10px] sm:text-xs font-semibold flex-shrink-0`}
                         >
                           {log.action}
                         </Badge>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                        <span className="hidden sm:inline text-xs text-muted-foreground flex-shrink-0">
                           -
                         </span>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                        <span className="hidden sm:inline text-xs text-muted-foreground flex-shrink-0">
                           Certificate:
                         </span>
-                        <span className="text-xs font-mono text-foreground flex-shrink-0">
-                          {log.cert_hash.slice(0, 8)}...
-                          {log.cert_hash.slice(-6)}
+                        <span className="text-[10px] sm:text-xs font-mono text-foreground flex-shrink-0">
+                          {log.cert_hash.slice(0, 6)}...
+                          {log.cert_hash.slice(-4)}
                         </span>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">
-                          - by -
-                        </span>
-                        <span className="text-xs font-mono text-foreground flex-shrink-0">
-                          {getWalletFromLog(log)?.slice(0, 6)}...
-                          {getWalletFromLog(log)?.slice(-4)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-medium ml-auto flex-shrink-0">
+                        <span className="text-[9px] sm:text-[10px] text-muted-foreground font-medium ml-auto flex-shrink-0">
                           {formatDistanceToNow(new Date(log.timestamp), {
                             addSuffix: true,
                           })}
@@ -526,58 +512,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Certificate Actions */}
-        <Card className="border">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-lg bg-chart-2 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-chart-1" />
-              </div>
-              <CardTitle className="text-lg font-bold">
-                Certificate Management
-              </CardTitle>
-            </div>
-            <CardDescription className="font-medium">
-              Issue, verify, and manage certificates
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-4">
-            <Button
-              asChild
-              variant="outline"
-              className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
-            >
-              <Link href="/certificates">
-                <FileText className="mr-2 h-4 w-4" />
-                View All Certificates
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
-            >
-              <Link href="/certificates/issue">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                {user.is_admin ? "Issue New Certificate" : "Issue Certificate"}
-              </Link>
-            </Button>
-            {user.is_admin && (
-              <Button
-                asChild
-                variant="outline"
-                className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
-              >
-                <Link href="/verify">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Verify Certificate
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* User Management */}
         <Card className="border">
           <CardHeader className="pb-4">
@@ -618,16 +553,6 @@ export default function DashboardPage() {
                     Register New User
                   </Link>
                 </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
-                >
-                  <Link href="/audit-logs/system">
-                    <History className="mr-2 h-4 w-4" />
-                    System Audit Logs
-                  </Link>
-                </Button>
               </>
             ) : (
               <>
@@ -653,6 +578,84 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Certificate Management */}
+        <Card className="border">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-lg bg-chart-2 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-chart-1" />
+              </div>
+              <CardTitle className="text-lg font-bold">
+                Certificate Management
+              </CardTitle>
+            </div>
+            <CardDescription className="font-medium">
+              Issue, verify, and manage certificates
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-4">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
+            >
+              <Link href="/certificates">
+                <FileText className="mr-2 h-4 w-4" />
+                View All Certificates
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
+            >
+              <Link href="/certificates/issue">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Issue New Certificate
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Logs - Admin Only */}
+        {user.is_admin && (
+          <Card className="border">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-10 w-10 rounded-lg bg-chart-2 flex items-center justify-center">
+                  <History className="h-5 w-5 text-chart-1" />
+                </div>
+                <CardTitle className="text-lg font-bold">Logs</CardTitle>
+              </div>
+              <CardDescription className="font-medium">
+                View system and verifier activity logs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-4">
+              <Button
+                asChild
+                variant="outline"
+                className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
+              >
+                <Link href="/audit-logs/system">
+                  <History className="mr-2 h-4 w-4" />
+                  Certificate Logs
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full justify-start h-11 font-semibold hover:bg-chart-2 hover:text-chart-1 transition-all"
+              >
+                <Link href="/verifiers">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Verifiers Logs
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

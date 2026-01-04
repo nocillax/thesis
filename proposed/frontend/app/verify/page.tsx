@@ -446,7 +446,7 @@ export default function VerifyPage() {
                     <p className="text-sm text-muted-foreground font-medium mb-2">
                       {certificate.is_revoked
                         ? "This certificate has been revoked and is no longer valid"
-                        : "This certificate is authentic and verified on the goquorum blockchain"}
+                        : "This certificate is authentic and verified on the GoQuorum Blockchain"}
                     </p>
                   </div>
                 </div>
@@ -572,14 +572,6 @@ export default function VerifyPage() {
                       </p>
                       <p className="font-bold text-foreground">
                         {formatCGPA(certificate.cgpa)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                        Issuance Date
-                      </p>
-                      <p className="font-semibold">
-                        {formatDate(certificate.issuance_date)}
                       </p>
                     </div>
                   </div>
