@@ -22,7 +22,25 @@ export class PdfService {
     process.cwd(),
     'public/templates/certificate-template.html',
   );
+  private backgroundImagePath = path.join(
+    process.cwd(),
+    'public/templates/certificate-template-bg.png',
+  );
   private browser: any = null;
+
+  /**
+   * Read background image and convert to base64 data URI
+   */
+  private getBackgroundImageDataUri(): string {
+    try {
+      const imageBuffer = fs.readFileSync(this.backgroundImagePath);
+      const base64Image = imageBuffer.toString('base64');
+      return `data:image/png;base64,${base64Image}`;
+    } catch (error) {
+      console.error('Background image loading failed:', error);
+      return ''; // Return empty string if image loading fails
+    }
+  }
 
   /**
    * Generate QR code as base64 data URL
@@ -44,6 +62,9 @@ export class PdfService {
     // Read the HTML template
     let htmlContent = fs.readFileSync(this.templatePath, 'utf-8');
 
+    // Get background image as data URI
+    const backgroundImageDataUri = this.getBackgroundImageDataUri();
+
     // Format the date
     const dateIssued = certificate.issuance_date
       ? new Date(certificate.issuance_date).toLocaleDateString('en-US', {
@@ -60,6 +81,7 @@ export class PdfService {
 
     // Replace placeholders with actual data (CGPA is already formatted by backend)
     htmlContent = htmlContent
+      .replace(/\{\{BACKGROUND_IMAGE\}\}/g, backgroundImageDataUri)
       .replace(/\{\{STUDENT_NAME\}\}/g, certificate.student_name)
       .replace(/\{\{STUDENT_ID\}\}/g, certificate.student_id)
       .replace(/\{\{DEGREE\}\}/g, certificate.degree)
@@ -106,6 +128,9 @@ export class PdfService {
     // Read the HTML template
     let htmlContent = fs.readFileSync(this.templatePath, 'utf-8');
 
+    // Get background image as data URI
+    const backgroundImageDataUri = this.getBackgroundImageDataUri();
+
     // Format the date
     const dateIssued = certificate.issuance_date
       ? new Date(certificate.issuance_date).toLocaleDateString('en-US', {
@@ -122,6 +147,7 @@ export class PdfService {
 
     // Replace placeholders with actual data (CGPA is already formatted by backend)
     htmlContent = htmlContent
+      .replace(/\{\{BACKGROUND_IMAGE\}\}/g, backgroundImageDataUri)
       .replace(/\{\{STUDENT_NAME\}\}/g, certificate.student_name)
       .replace(/\{\{STUDENT_ID\}\}/g, certificate.student_id)
       .replace(/\{\{DEGREE\}\}/g, certificate.degree)

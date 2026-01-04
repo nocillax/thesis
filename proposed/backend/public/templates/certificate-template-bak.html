@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Certificate of Graduation</title>
+    <style>
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+        font-family: 'Times New Roman', Times, serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .page-container {
+        width: 297mm;
+        height: 209mm;
+        position: relative;
+        background: #fff;
+        margin: 0 auto;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
+        overflow: hidden;
+        padding: 15mm;
+      }
+
+      /* --- Design Elements (Borders & Corners) --- */
+      .border-outer {
+        position: absolute;
+        top: 10mm;
+        left: 10mm;
+        right: 10mm;
+        bottom: 10mm;
+        border: 2px solid #d4af37; /* Gold */
+        z-index: 1;
+      }
+
+      .border-inner {
+        position: absolute;
+        top: 12mm;
+        left: 12mm;
+        right: 12mm;
+        bottom: 12mm;
+        border: 5px solid #2c3e50; /* Dark Slate Blue */
+        z-index: 1;
+      }
+
+      .corner-decoration {
+        position: absolute;
+        width: 30mm;
+        height: 30mm;
+        border-top: 5px solid #d4af37;
+        border-left: 5px solid #d4af37;
+        z-index: 2;
+      }
+      .top-left {
+        top: 12mm;
+        left: 12mm;
+      }
+      .top-right {
+        top: 12mm;
+        right: 12mm;
+        transform: rotate(90deg);
+      }
+      .bottom-right {
+        bottom: 12mm;
+        right: 12mm;
+        transform: rotate(180deg);
+      }
+      .bottom-left {
+        bottom: 12mm;
+        left: 12mm;
+        transform: rotate(270deg);
+      }
+
+      /* --- Content Layout --- */
+      .content {
+        position: relative;
+        z-index: 10;
+        text-align: center;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 5mm 20mm;
+      }
+
+      /* --- Header Section --- */
+      .header {
+        margin-top: 2mm; /* Reduced top margin */
+      }
+
+      h1.title {
+        font-family: 'Georgia', serif;
+        font-size: 36pt;
+        color: #2c3e50;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+        margin: 0;
+        line-height: 1.2;
+        font-weight: normal;
+      }
+
+      .university-name {
+        font-family: 'Times New Roman', serif;
+        font-size: 24pt;
+        color: #d4af37; /* Gold */
+        margin-top: 5px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .presentation-text {
+        font-family: 'Georgia', serif;
+        font-style: italic;
+        font-size: 14pt;
+        color: #7f8c8d;
+        margin-top: 5mm; /* Reduced margin */
+      }
+
+      /* --- Recipient Section --- */
+      .recipient-name {
+        /* Updated to cooler cursive stack */
+        font-family:
+          'Edwardian Script ITC', 'Snell Roundhand', 'Brush Script MT',
+          'Segoe Script', cursive;
+        font-size: 52pt; /* Increased size slightly for impact */
+        color: #000;
+        margin: 0; /* Removed margin to pull up */
+        border-bottom: 1px solid #ddd;
+        display: inline-block;
+        min-width: 60%;
+        padding-bottom: 5px;
+        line-height: 1.1;
+      }
+
+      .body-text {
+        font-family: 'Georgia', serif;
+        font-size: 12pt;
+        color: #444;
+        max-width: 80%;
+        margin: 2mm auto;
+        line-height: 1.6;
+      }
+
+      /* --- Degree & Program Details --- */
+      .academic-details {
+        margin: 2mm 0; /* Reduced margin */
+      }
+
+      .degree {
+        font-family: 'Georgia', serif;
+        font-size: 22pt;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 2mm;
+      }
+
+      .program {
+        font-family: 'Arial', sans-serif;
+        font-size: 16pt;
+        color: #d4af37;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: bold;
+      }
+
+      /* --- Stats Grid (ID, CGPA, Date) --- */
+      .stats-grid {
+        display: flex;
+        justify-content: center;
+        gap: 20mm;
+        margin: 2mm 0 10mm 0; /* Added bottom margin to push away from footer/QR */
+        padding: 2mm 0;
+        border-top: 1px solid #eee;
+        border-bottom: 1px solid #eee;
+      }
+
+      .stat-item {
+        text-align: center;
+      }
+
+      .stat-label {
+        display: block;
+        font-family: 'Arial', sans-serif;
+        font-size: 9pt;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #7f8c8d;
+        margin-bottom: 2px;
+      }
+
+      .stat-value {
+        font-family: 'Georgia', serif;
+        font-size: 14pt;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .stat-value.cgpa {
+        color: #d4af37;
+      }
+
+      /* --- Footer / Signatures --- */
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 10mm;
+        padding: 0 15mm;
+        position: relative;
+      }
+
+      .signature-block {
+        text-align: center;
+        width: 65mm;
+        position: relative;
+        z-index: 20;
+      }
+
+      .signature-line {
+        border-bottom: 1px solid #2c3e50;
+        margin-bottom: 3mm;
+        height: 10mm;
+      }
+
+      .signature-title {
+        font-family: 'Arial', sans-serif;
+        font-size: 10pt;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #2c3e50;
+        font-weight: bold;
+      }
+
+      /* --- Center Elements (Seal + QR) --- */
+      .center-elements {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: row; /* Side by side */
+        align-items: center;
+        justify-content: center;
+        gap: 15px; /* Space between Seal and QR */
+        z-index: 5;
+        height: 35mm;
+      }
+
+      .seal {
+        width: 25mm;
+        height: 25mm;
+        border-radius: 50%;
+        border: 2px dashed #d4af37;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .seal-inner {
+        width: 20mm;
+        height: 20mm;
+        border-radius: 50%;
+        border: 1px solid #d4af37;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 7pt;
+        color: #d4af37;
+        text-transform: uppercase;
+        text-align: center;
+      }
+
+      .qr-code {
+        position: relative;
+        background: white;
+        padding: 2px;
+        border: 1px solid #d4af37;
+        display: flex;
+      }
+
+      .qr-code img {
+        width: 22mm;
+        height: 22mm;
+        display: block;
+      }
+
+      /* --- Watermark --- */
+      .watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-15deg);
+        font-size: 120px;
+        font-weight: 900;
+        color: rgba(231, 76, 60, 0.15);
+        pointer-events: none;
+        z-index: 30;
+        letter-spacing: 10px;
+        white-space: nowrap; /* Ensure it stays on one line */
+      }
+
+      @media print {
+        body {
+          background: none;
+          -webkit-print-color-adjust: exact;
+        }
+        .page-container {
+          box-shadow: none;
+          margin: 0;
+          page-break-after: always;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-container">
+      <!-- Background Borders -->
+      <div class="border-outer"></div>
+      <div class="border-inner"></div>
+
+      <!-- Corner Accents -->
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+
+      <!-- Watermark Placeholder -->
+      <div class="watermark">{{REVOKED_WATERMARK}}</div>
+
+      <div class="content">
+        <!-- Header -->
+        <div class="header">
+          <h1 class="title">Certificate of Graduation</h1>
+          <div class="university-name">{{ISSUING_AUTHORITY}}</div>
+          <div class="presentation-text">This is to certify that</div>
+        </div>
+
+        <!-- Recipient Name -->
+        <div class="recipient-name">{{STUDENT_NAME}}</div>
+
+        <!-- Body Text -->
+        <div class="body-text">
+          has successfully completed the requirements for
+        </div>
+
+        <!-- Degree & Program -->
+        <div class="academic-details">
+          <div class="degree">{{DEGREE}}</div>
+          <div class="program">in {{PROGRAM}}</div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Student ID</span>
+            <div class="stat-value">{{STUDENT_ID}}</div>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">CGPA</span>
+            <div class="stat-value cgpa">{{CGPA}}</div>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Date Issued</span>
+            <div class="stat-value">{{DATE_ISSUED}}</div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+          <!-- Signature Left -->
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div class="signature-title">Chancellor</div>
+          </div>
+
+          <!-- Center Area (Seal + QR Side-by-Side) -->
+          <div class="center-elements">
+            <!-- Seal -->
+            <div class="seal">
+              <div class="seal-inner">Official<br />Seal</div>
+            </div>
+            <!-- QR Code -->
+            <div class="qr-code">
+              <img src="{{QR_CODE}}" alt="QR Code" />
+            </div>
+          </div>
+
+          <!-- Signature Right -->
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div class="signature-title">University Dean</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
