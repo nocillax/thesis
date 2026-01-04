@@ -49,17 +49,7 @@ export default function RootLayout({
               </main>
               <Footer />
             </div>
-            <Toaster
-              richColors
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: "hsl(var(--background))",
-                  border: "1px solid hsl(var(--border))",
-                  zIndex: 99999,
-                },
-              }}
-            />
+            <Toaster richColors position="bottom-right" />
           </QueryClientProvider>
         </ThemeProvider>
       </body>
