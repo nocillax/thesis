@@ -40,7 +40,7 @@ export async function extractQRFromPDF(file: File): Promise<string | null> {
       console.log(`[QR Scanner] Canvas size: ${canvas.width}x${canvas.height}`);
 
       await page.render({
-        canvasContext: context,
+        canvas: canvas,
         viewport: viewport,
       }).promise;
 
