@@ -92,12 +92,12 @@ export default function CertificateActionRequestsPage() {
 
   // Tab states
   const [parentTab, setParentTab] = useState<ParentTab>(
-    user?.is_admin ? "all-requests" : "my-requests"
+    user?.is_admin ? "all-requests" : "my-requests",
   );
   const [allRequestsTab, setAllRequestsTab] =
     useState<AllRequestsTab>("pending");
   const [myRequestsTab, setMyRequestsTab] = useState<MyRequestsTab>(
-    user?.is_admin ? "processing" : "pending"
+    user?.is_admin ? "processing" : "pending",
   );
 
   // Sorting states
@@ -121,7 +121,7 @@ export default function CertificateActionRequestsPage() {
       certificateActionRequestsAPI.getAll(
         allRequestsTab === "all" ? undefined : allRequestsTab,
         1,
-        100
+        100,
       ),
     enabled: parentTab === "all-requests" && user?.is_admin,
   });
@@ -132,7 +132,7 @@ export default function CertificateActionRequestsPage() {
       certificateActionRequestsAPI.getMyRequests(
         myRequestsTab === "all" ? undefined : myRequestsTab,
         1,
-        100
+        100,
       ),
     enabled: parentTab === "my-requests",
   });
@@ -197,7 +197,7 @@ export default function CertificateActionRequestsPage() {
     },
     onError: (error: any) => {
       toast.error(
-        error.response?.data?.message || "Failed to release request(s)"
+        error.response?.data?.message || "Failed to release request(s)",
       );
     },
   });
@@ -206,8 +206,8 @@ export default function CertificateActionRequestsPage() {
     mutationFn: (ids: { id: number; reason: string }[]) =>
       Promise.all(
         ids.map(({ id, reason }) =>
-          certificateActionRequestsAPI.reject(id, reason)
-        )
+          certificateActionRequestsAPI.reject(id, reason),
+        ),
       ),
     onSuccess: () => {
       toast.success("Request(s) rejected successfully");
@@ -239,20 +239,20 @@ export default function CertificateActionRequestsPage() {
     },
     onError: (error: any) => {
       toast.error(
-        error.response?.data?.message || "Failed to cancel request(s)"
+        error.response?.data?.message || "Failed to cancel request(s)",
       );
     },
   });
 
   const [executingRequestId, setExecutingRequestId] = useState<number | null>(
-    null
+    null,
   );
 
   const handleExecute = async (
     certHash: string,
     action: string,
     reason: string,
-    requestId: number
+    requestId: number,
   ) => {
     setExecutingRequestId(requestId);
     try {
@@ -436,12 +436,12 @@ export default function CertificateActionRequestsPage() {
                         {allRequestsTab === "pending"
                           ? "New requests awaiting admin action"
                           : allRequestsTab === "processing"
-                          ? "Requests currently being processed"
-                          : allRequestsTab === "completed"
-                          ? "Successfully completed requests"
-                          : allRequestsTab === "rejected"
-                          ? "Rejected requests"
-                          : "All action requests"}
+                            ? "Requests currently being processed"
+                            : allRequestsTab === "completed"
+                              ? "Successfully completed requests"
+                              : allRequestsTab === "rejected"
+                                ? "Rejected requests"
+                                : "All action requests"}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 relative">
@@ -602,7 +602,7 @@ export default function CertificateActionRequestsPage() {
                                       <TableCell>
                                         <Checkbox
                                           checked={selectedIds.includes(
-                                            request.id
+                                            request.id,
                                           )}
                                           onCheckedChange={() =>
                                             toggleSelectOne(request.id)
@@ -675,7 +675,7 @@ export default function CertificateActionRequestsPage() {
                                       <div className="flex items-center gap-1">
                                         <code className="text-xs bg-accent px-2 py-1 rounded border">
                                           {truncateAddress(
-                                            request.requested_by_wallet_address
+                                            request.requested_by_wallet_address,
                                           )}
                                         </code>
                                         <CopyButton
@@ -695,7 +695,7 @@ export default function CertificateActionRequestsPage() {
                                           <div className="flex items-center gap-1">
                                             <code className="text-xs bg-accent px-2 py-1 rounded border">
                                               {truncateAddress(
-                                                request.taken_by_wallet_address
+                                                request.taken_by_wallet_address,
                                               )}
                                             </code>
                                             <CopyButton
@@ -744,7 +744,7 @@ export default function CertificateActionRequestsPage() {
                                       </div>
                                     </TableCell>
                                   </TableRow>
-                                )
+                                ),
                               )}
                             </TableBody>
                           </Table>
@@ -798,19 +798,19 @@ export default function CertificateActionRequestsPage() {
                           ? myRequestsTab === "processing"
                             ? "Requests you are currently working on"
                             : myRequestsTab === "completed"
-                            ? "Requests you have completed"
-                            : myRequestsTab === "rejected"
-                            ? "Requests you have rejected"
-                            : "All your requests"
+                              ? "Requests you have completed"
+                              : myRequestsTab === "rejected"
+                                ? "Requests you have rejected"
+                                : "All your requests"
                           : myRequestsTab === "pending"
-                          ? "Your pending requests awaiting admin action"
-                          : myRequestsTab === "processing"
-                          ? "Your requests currently being processed by admins"
-                          : myRequestsTab === "completed"
-                          ? "Your completed requests"
-                          : myRequestsTab === "rejected"
-                          ? "Your rejected requests"
-                          : "All your requests"}
+                            ? "Your pending requests awaiting admin action"
+                            : myRequestsTab === "processing"
+                              ? "Your requests currently being processed by admins"
+                              : myRequestsTab === "completed"
+                                ? "Your completed requests"
+                                : myRequestsTab === "rejected"
+                                  ? "Your rejected requests"
+                                  : "All your requests"}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 relative">
@@ -1032,7 +1032,7 @@ export default function CertificateActionRequestsPage() {
                                       <TableCell>
                                         <Checkbox
                                           checked={selectedIds.includes(
-                                            request.id
+                                            request.id,
                                           )}
                                           onCheckedChange={() =>
                                             toggleSelectOne(request.id)
@@ -1105,7 +1105,7 @@ export default function CertificateActionRequestsPage() {
                                       <div className="flex items-center gap-1">
                                         <code className="text-xs bg-accent px-2 py-1 rounded border">
                                           {truncateAddress(
-                                            request.requested_by_wallet_address
+                                            request.requested_by_wallet_address,
                                           )}
                                         </code>
                                         <CopyButton
@@ -1166,7 +1166,7 @@ export default function CertificateActionRequestsPage() {
                                         </TableCell>
                                       )}
                                   </TableRow>
-                                )
+                                ),
                               )}
                             </TableBody>
                           </Table>
@@ -1212,12 +1212,12 @@ export default function CertificateActionRequestsPage() {
                     {myRequestsTab === "pending"
                       ? "Your pending requests awaiting admin action"
                       : myRequestsTab === "processing"
-                      ? "Your requests currently being processed by admins"
-                      : myRequestsTab === "completed"
-                      ? "Your completed requests"
-                      : myRequestsTab === "rejected"
-                      ? "Your rejected requests"
-                      : "All your requests"}
+                        ? "Your requests currently being processed by admins"
+                        : myRequestsTab === "completed"
+                          ? "Your completed requests"
+                          : myRequestsTab === "rejected"
+                            ? "Your rejected requests"
+                            : "All your requests"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1357,7 +1357,7 @@ export default function CertificateActionRequestsPage() {
                                     <TableCell>
                                       <Checkbox
                                         checked={selectedIds.includes(
-                                          request.id
+                                          request.id,
                                         )}
                                         onCheckedChange={() =>
                                           toggleSelectOne(request.id)
@@ -1426,11 +1426,11 @@ export default function CertificateActionRequestsPage() {
                                       </Tooltip>
                                     </TooltipProvider>
                                   </TableCell>
-                                  <TableCell>
+                                  {/* <TableCell>
                                     <div className="flex items-center gap-1">
                                       <span className="text-xs font-mono">
                                         {truncateAddress(
-                                          request.requested_by_wallet_address
+                                          request.requested_by_wallet_address,
                                         )}
                                       </span>
                                       <CopyButton
@@ -1440,13 +1440,13 @@ export default function CertificateActionRequestsPage() {
                                         showTooltip={false}
                                       />
                                     </div>
-                                  </TableCell>
+                                  </TableCell> */}
                                   <TableCell>
                                     {request.taken_by_wallet_address ? (
                                       <div className="flex items-center gap-1">
                                         <span className="text-xs font-mono">
                                           {truncateAddress(
-                                            request.taken_by_wallet_address
+                                            request.taken_by_wallet_address,
                                           )}
                                         </span>
                                         <CopyButton
@@ -1492,7 +1492,7 @@ export default function CertificateActionRequestsPage() {
                                     </div>
                                   </TableCell>
                                 </TableRow>
-                              )
+                              ),
                             )}
                           </TableBody>
                         </Table>
