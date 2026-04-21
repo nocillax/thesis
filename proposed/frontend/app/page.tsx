@@ -77,7 +77,7 @@ export default function Home() {
                   100%
                 </div>
                 <div className="text-sm text-muted-foreground font-medium">
-                  Tamper-Proof
+                  Tamper-Evident
                 </div>
               </div>
               <div className="text-center">
@@ -90,7 +90,7 @@ export default function Home() {
               </div>
               <div className="text-center">
                 <div className="text-3xl md:text-4xl font-bold text-primary mb-1">
-                  &lt;3s
+                  &lt;1s
                 </div>
                 <div className="text-sm text-muted-foreground font-medium">
                   Verify Time

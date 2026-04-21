@@ -1,5 +1,12 @@
 import jsQR from "jsqr";
 
+let isPdfWorkerConfigured = false;
+
+function getVersionedPdfWorkerSrc(pdfjsVersion: string): string {
+  // Keep worker and API versions aligned to avoid UnknownErrorException mismatch.
+  return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+}
+
 /**
  * Extract QR code from a PDF file
  * @param file - PDF file to scan
@@ -10,8 +17,13 @@ export async function extractQRFromPDF(file: File): Promise<string | null> {
     // Dynamically import pdfjs-dist only on client-side to avoid SSR issues
     const pdfjsLib = await import("pdfjs-dist");
 
-    // Set worker source for PDF.js - use local file from public folder
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+    if (!isPdfWorkerConfigured) {
+      // Use a worker URL pinned to the exact loaded PDF.js version.
+      pdfjsLib.GlobalWorkerOptions.workerSrc = getVersionedPdfWorkerSrc(
+        pdfjsLib.version,
+      );
+      isPdfWorkerConfigured = true;
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -55,7 +67,7 @@ export async function extractQRFromPDF(file: File): Promise<string | null> {
       if (qrCode && qrCode.data) {
         console.log(
           `[QR Scanner] ✓ QR code found at scale ${scale}:`,
-          qrCode.data
+          qrCode.data,
         );
         return qrCode.data;
       }
@@ -63,7 +75,7 @@ export async function extractQRFromPDF(file: File): Promise<string | null> {
     }
 
     console.error(
-      "[QR Scanner] Failed to find QR code after trying all scales"
+      "[QR Scanner] Failed to find QR code after trying all scales",
     );
     return null;
   } catch (error) {
@@ -98,7 +110,7 @@ export async function extractQRFromImage(file: File): Promise<string | null> {
           canvas.height = img.height;
 
           console.log(
-            `[QR Scanner] Image size: ${canvas.width}x${canvas.height}`
+            `[QR Scanner] Image size: ${canvas.width}x${canvas.height}`,
           );
 
           context.drawImage(img, 0, 0);
@@ -107,7 +119,7 @@ export async function extractQRFromImage(file: File): Promise<string | null> {
             0,
             0,
             canvas.width,
-            canvas.height
+            canvas.height,
           );
 
           // Try with multiple inversion attempts for better cross-platform compatibility
@@ -117,7 +129,7 @@ export async function extractQRFromImage(file: File): Promise<string | null> {
             imageData.height,
             {
               inversionAttempts: "attemptBoth",
-            }
+            },
           );
 
           if (qrCode && qrCode.data) {
@@ -162,7 +174,7 @@ export async function extractQRFromFile(file: File): Promise<string | null> {
     return extractQRFromImage(file);
   } else {
     throw new Error(
-      "Unsupported file type. Please upload a PDF or image file."
+      "Unsupported file type. Please upload a PDF or image file.",
     );
   }
 }

@@ -21,7 +21,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor - Handle common errors
@@ -36,10 +36,11 @@ apiClient.interceptors.response.use(
       typeof window !== "undefined" &&
       !isLoginEndpoint
     ) {
-      // Token expired or invalid - redirect to login
+      // Token expired or invalid - clear all persisted auth state and redirect to login
       localStorage.removeItem("access_token");
+      localStorage.removeItem("auth-storage");
       window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );

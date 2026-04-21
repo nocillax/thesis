@@ -21,6 +21,24 @@ interface AuthState {
   fetchUser: () => Promise<void>;
 }
 
+const clearUserPollingInterval = () => {
+  if (typeof window === "undefined") return;
+
+  const existingInterval = (window as any).__userPollingInterval;
+  if (existingInterval) {
+    clearInterval(existingInterval);
+    delete (window as any).__userPollingInterval;
+  }
+};
+
+const clearPersistedAuth = () => {
+  if (typeof window === "undefined") return;
+
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("auth-storage");
+  clearUserPollingInterval();
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -59,13 +77,7 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
-          localStorage.removeItem("access_token");
-          // Clear user polling interval
-          const existingInterval = (window as any).__userPollingInterval;
-          if (existingInterval) {
-            clearInterval(existingInterval);
-            delete (window as any).__userPollingInterval;
-          }
+          clearPersistedAuth();
         }
         set({
           isAuthenticated: false,
@@ -100,9 +112,8 @@ export const useAuthStore = create<AuthState>()(
               try {
                 const currentWalletAddress = get().walletAddress;
                 if (currentWalletAddress) {
-                  const updatedUser = await usersAPI.getByAddress(
-                    currentWalletAddress
-                  );
+                  const updatedUser =
+                    await usersAPI.getByAddress(currentWalletAddress);
                   const currentUser = get().user;
 
                   // Check if admin status or authorization changed
@@ -127,6 +138,20 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch (error) {
           console.error("Failed to fetch user:", error);
+
+          const statusCode = (error as any)?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            clearPersistedAuth();
+            set({
+              isAuthenticated: false,
+              walletAddress: null,
+              token: null,
+              user: null,
+              isLoading: false,
+            });
+            return;
+          }
+
           set({ isLoading: false });
         }
       },
@@ -141,15 +166,25 @@ export const useAuthStore = create<AuthState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Keep loading true if we need to fetch user
-          if (state.isAuthenticated && state.walletAddress && !state.user) {
-            state.isLoading = true;
-            state.fetchUser();
-          } else {
+          const hasToken =
+            typeof window !== "undefined" &&
+            !!localStorage.getItem("access_token");
+
+          if (!state.isAuthenticated || !state.walletAddress || !hasToken) {
+            state.isAuthenticated = false;
+            state.walletAddress = null;
+            state.token = null;
+            state.user = null;
             state.isLoading = false;
+            clearPersistedAuth();
+            return;
           }
+
+          // Always revalidate persisted auth with backend on app boot.
+          state.isLoading = true;
+          state.fetchUser();
         }
       },
-    }
-  )
+    },
+  ),
 );

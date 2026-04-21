@@ -17,15 +17,13 @@ import {
   createLoginMessage,
 } from "@/lib/blockchain/wallet";
 import { authAPI } from "@/lib/api/auth";
-import { sessionsAPI } from "@/lib/api/sessions";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const router = useRouter();
-  const { setAuth, fetchUser, user, isAuthenticated, isLoading } =
-    useAuthStore();
+  const { setAuth, isAuthenticated, isLoading } = useAuthStore();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -65,18 +63,12 @@ export default function LoginPage() {
       });
 
       if (response.success && response.access_token) {
-        // Store token in localStorage with correct key
-        localStorage.setItem("access_token", response.access_token);
-
-        // Update auth store and wait for user to be fetched
+        // Update auth store; it will fetch the user profile.
         setAuth({
           isAuthenticated: true,
           walletAddress: address,
           token: response.access_token,
         });
-
-        // Wait for user to be fetched
-        await fetchUser();
 
         toast.success("Login successful!");
 

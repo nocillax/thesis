@@ -142,7 +142,7 @@ export default function DashboardPage() {
         lastOfflinePeriod.start,
         lastOfflinePeriod.end,
         1,
-        5
+        5,
       );
     },
     enabled: isAuthenticated && user?.is_admin === true && !!lastOfflinePeriod,
@@ -211,8 +211,8 @@ export default function DashboardPage() {
               <>
                 <div className="text-5xl font-bold text-foreground mb-3">
                   {user.is_admin
-                    ? pendingRequestsCount ?? "-"
-                    : myNonCompletedCount ?? "-"}
+                    ? (pendingRequestsCount ?? "-")
+                    : (myNonCompletedCount ?? "-")}
                 </div>
                 <p className="text-sm text-muted-foreground font-medium">
                   {user.is_admin
@@ -368,7 +368,7 @@ export default function DashboardPage() {
                         <Badge
                           variant="outline"
                           className={`${getActionBadgeVariant(
-                            log.action
+                            log.action,
                           )} text-[10px] sm:text-xs font-semibold flex-shrink-0`}
                         >
                           {log.action}
@@ -457,7 +457,7 @@ export default function DashboardPage() {
                         <Badge
                           variant="outline"
                           className={`${getActionBadgeVariant(
-                            log.action
+                            log.action,
                           )} text-[10px] sm:text-xs font-semibold flex-shrink-0`}
                         >
                           {log.action}
@@ -517,7 +517,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div
+        className={`grid gap-6 md:grid-cols-2 ${
+          user.is_admin ? "lg:grid-cols-3" : "lg:grid-cols-2"
+        }`}
+      >
         {/* User Management */}
         <Card className="border">
           <CardHeader className="pb-4">
